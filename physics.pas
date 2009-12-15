@@ -1,10 +1,16 @@
 unit Physics;
 
 interface
+uses BattleField;
 
 type
+	Vector = record
+		x: integer;
+		y: integer;
+	end;
+
 	PhysicsController = record
-		a: integer;
+		field: BField;
 	end;
 
 

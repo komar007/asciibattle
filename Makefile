@@ -1,4 +1,4 @@
-all: main
+all: asciibattle
 
 %: %.pas *.pas
 	fpc $<
