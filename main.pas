@@ -1,8 +1,8 @@
 program ASCIIBattle;
 
-uses Physics, Config;
+uses BattleField, Config;
 
-procedure print(var f: BattleField);
+procedure print(var f: BField);
 var
 	i, j: integer;
 begin
@@ -15,10 +15,10 @@ begin
 end;
 
 var
-	f: BattleField;
+	f: BField;
 	s, t: ansistring;
 begin
-	battlefield_init(f, 10, 10);
+	bfield_init(f, 10, 10);
 	readln(s);
 	s := s + ' ';
 	while not eof do begin
@@ -26,6 +26,6 @@ begin
 		s := s + t;
 	end;
 
-	parse_battlefield_string(f, s);
+	parse_bfield_string(f, s);
 	print(f);
 end.

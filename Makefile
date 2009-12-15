@@ -1,11 +1,8 @@
 all: main
 
-%: %.pas physics.pas config.pas
+%: %.pas *.pas
 	fpc $<
 
-%.run: %
-	./$<
-
-%.rin: % %.in
-	./$< <$<.in
+clean:
+	rm -fr *.o *.ppu
 

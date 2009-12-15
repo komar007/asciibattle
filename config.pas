@@ -1,9 +1,9 @@
 unit Config;
 
 interface
-uses Physics, StaticConfig;
+uses BattleField, StaticConfig;
 
-function parse_battlefield_string(var field: BattleField; field_str: ansistring) : integer;
+function parse_bfield_string(var field: BField; field_str: ansistring) : integer;
 
 implementation
 
@@ -35,7 +35,7 @@ begin
 	parse_num := s;
 end;	
 
-function parse_battlefield_string(var field: BattleField; field_str: ansistring) : integer;
+function parse_bfield_string(var field: BField; field_str: ansistring) : integer;
 var
 	i: integer;
 	len: integer;
@@ -47,7 +47,7 @@ begin
 
 	if (field.width < w) or (field.height < h) then
 	begin
-		parse_battlefield_string := -1;
+		parse_bfield_string := -1;
 		exit;
 	end;
 
