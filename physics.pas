@@ -1,14 +1,9 @@
 unit Physics;
 
 interface
-uses BattleField;
+uses BattleField, PhysicsTypes, ListOfRocket;
 
 type
-	Vector = record
-		x: integer;
-		y: integer;
-	end;
-
 	PhysicsController = record
 		field: BField;
 	end;

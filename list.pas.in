@@ -2,6 +2,7 @@
 unit ListOf_X_;
 
 interface
+uses PhysicsTypes;
 
 type
 	p_X_Node = ^_X_Node;
