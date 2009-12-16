@@ -1,10 +1,10 @@
 all: asciibattle
 
-asciibattle: *.pas listofinteger.pas
-	fpc $<
+asciibattle: asciibattle.pas battlefield.pas physics.pas config.pas staticconfig.pas listofinteger.pas
+	fpc asciibattle.pas
 
-listofinteger.pas: list.pas.in
-	sed -e 's/_X_/Integer/g' list.pas.in > listofinteger.pas
+listof%.pas: list.pas.in
+	sed -e 's/_X_/Integer/g' list.pas.in > $@
 
 clean:
 	rm -fr *.o *.ppu
