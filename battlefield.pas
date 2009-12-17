@@ -12,13 +12,15 @@ type
 		arr: array of array of BFieldElement;
 	end;
 
-procedure bfield_init(var field: BField; x, y: integer);
+	pBfield = ^BField;
+
+procedure new_bfield(var field: BField; x, y: integer);
 
 
 implementation
 
 
-procedure bfield_init(var field: BField; x, y: integer);
+procedure new_bfield(var field: BField; x, y: integer);
 begin
 	field.width := x;
 	field.height := y;

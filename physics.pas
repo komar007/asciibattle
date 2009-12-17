@@ -5,22 +5,23 @@ uses BattleField, PhysicsTypes, ListOfRocket;
 
 type
 	PhysicsController = record
-		field: BField;
+		field: pBField;
 		rockets: RocketList;
 		time: real;
 	end;
 
-procedure new_pc(var p: PhysicsController);
+procedure new_pc(var p: PhysicsController; bf: pBField);
 procedure pc_step(var p: PhysicsController; delta: real);
 
 
 implementation
 
 
-procedure new_pc(var p: PhysicsController);
+procedure new_pc(var p: PhysicsController; bf: pBField);
 begin
 	p.time := 0.0;
 	new_list(p.rockets);
+	p.field := bf;
 end;
 
 procedure pc_step(var p: PhysicsController; delta: real);
