@@ -1,6 +1,6 @@
 program ASCIIBattle;
 
-uses BattleField, Config;
+uses BattleField, Config, Physics;
 
 procedure print(var f: BField);
 var

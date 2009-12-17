@@ -5,7 +5,9 @@ uses BattleField, StaticConfig;
 
 function parse_bfield_string(var field: BField; field_str: ansistring) : integer;
 
+
 implementation
+
 
 { Auxiliary function used by parse_num }
 function numeric(c: char) : boolean;
@@ -13,7 +15,8 @@ begin
 	numeric := ((ord(c) >= ord('0')) and (ord(c) <= ord('9'))) or (c = '-');
 end;
 
-{ parses a number in string from position l[s], leaves the number in num, returns the first non-digit }
+{ parses a number in string from position l[s], leaves the number in num,
+returns the position of the first non-digit }
 function parse_num(var l: ansistring; s: integer; var num: integer) : integer;
 var
 	sign, len: integer;

@@ -12,9 +12,11 @@ type
 		arr: array of array of BFieldElement;
 	end;
 
-	procedure bfield_init(var field: BField; x, y: integer);
+procedure bfield_init(var field: BField; x, y: integer);
+
 
 implementation
+
 
 procedure bfield_init(var field: BField; x, y: integer);
 begin
