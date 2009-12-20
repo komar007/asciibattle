@@ -13,6 +13,7 @@ type
 
 	_X_List = record
 		head: p_X_Node;
+		size: integer;
 	end;
 
 procedure new_list(var l: _X_List);
@@ -29,6 +30,7 @@ implementation
 procedure new_list(var l: _X_List);
 begin
 	l.head := nil;
+	l.size := 0;
 end;
 
 procedure new_node(var n: p_X_Node; v: _X_);
@@ -48,6 +50,7 @@ begin
 	if list.head <> nil then
 		list.head^.prev := t;
 	list.head := t;
+	inc(list.size);
 end;
 
 procedure destroy(var list: _X_List);
@@ -59,6 +62,7 @@ begin
 		dispose(list.head);
 		list.head := t;
 	end;
+	list.size := 0;
 end;
 
 procedure remove(var list: _X_List; el: p_X_Node);
@@ -71,6 +75,7 @@ begin
 	if el^.prev <> nil then
 		el^.prev^.next := el^.next;
 	dispose(el);
+	dec(list.size);
 end;
 
 function find(var list: _X_List; var el: _X_) : p_X_Node;

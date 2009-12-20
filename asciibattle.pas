@@ -49,9 +49,11 @@ begin
 	new_pc(p, @f);
 	new_rocket(r, 9, 37, 13, -25, 0, 9.81);
 	push_front(p.rockets, r);
-	new_rocket(r, 52, 36, -11, -11, 0, 9.81);
+	new_rocket(r, 52, 36, -11, -21, 0, 9.81);
 	push_front(p.rockets, r);
-	new_rocket(r, 26, 31, -2, -30, 0, 9.81);
+	new_rocket(r, 26, 31, 2, -30, 0, 9.81);
+	push_front(p.rockets, r);
+	new_rocket(r, 53, 36, -14, -19, 0, 9.81);
 	push_front(p.rockets, r);
 	clrscr;
 	while true do
@@ -61,16 +63,15 @@ begin
 		cr := p.rockets.head;
 		while cr <> nil do
 		begin
-			if ((cr^.v.position.x > 0) and (cr^.v.position.x < f.width) and
-				(cr^.v.position.y > 0) and (cr^.v.position.y < f.height)) then begin
-				gotoxy(trunc(cr^.v.position.x), trunc(cr^.v.position.y));
-				write('R');
+			if (cr^.v.position.y > 0) then begin
+				gotoxy(1 + trunc(cr^.v.position.x), 1 + trunc(cr^.v.position.y));
+				write('@');
 			end;
 			cr := cr^.next;
 		end;
 		gotoxy(1,1);
 		pc_step(p, 0.1);
-		delay(100);
+		delay(35);
 		if keypressed then
 			break;
 	end;

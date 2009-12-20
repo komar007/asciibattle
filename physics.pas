@@ -11,6 +11,7 @@ type
 	end;
 
 procedure new_pc(var p: PhysicsController; bf: pBField);
+function pc_rocket_in_field(var p: PhysicsController; var r: Rocket) : boolean;
 procedure pc_step(var p: PhysicsController; delta: real);
 
 
@@ -24,15 +25,26 @@ begin
 	p.field := bf;
 end;
 
+function pc_rocket_in_field(var p: PhysicsController; var r: Rocket) : boolean;
+var
+	pos: Vector;
+begin
+	pos := rocket_integerpos(r);
+	pc_rocket_in_field := (pos.x >= 0) and (pos.x < p.field^.width) and (pos.y < p.field^.height);
+end;
+
 procedure pc_step(var p: PhysicsController; delta: real);
 var
-	cur: pRocketNode; 
+	cur, t: pRocketNode; 
 begin
 	cur := p.rockets.head;
 	while cur <> nil do
 	begin
 		rocket_step(cur^.v, delta);
+		t := cur;
 		cur := cur^.next;
+		if not pc_rocket_in_field(p, t^.v) then
+			remove(p.rockets, t);
 	end;
 
 	p.time := p.time + delta;

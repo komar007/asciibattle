@@ -23,6 +23,7 @@ Operator = (a: Rocket; b: Rocket) eqrocket : boolean;
 
 procedure new_rocket(var r: Rocket; x, y: real; vx, vy: real; ax, ay: real); 
 procedure rocket_step(var r: Rocket; delta: real);
+function rocket_integerpos(var r: Rocket) : Vector;
 
 
 implementation
@@ -71,6 +72,12 @@ procedure rocket_step(var r: Rocket; delta: real);
 begin
 	r.velocity := r.velocity + (r.acceleration * delta);
 	r.position := r.position + (r.velocity * delta);
+end;
+
+function rocket_integerpos(var r: Rocket) : Vector;
+begin
+	rocket_integerpos.x := trunc(r.position.x);
+	rocket_integerpos.y := trunc(r.position.y);
 end;
 
 begin
