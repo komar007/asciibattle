@@ -1,6 +1,5 @@
 program ASCIIBattle;
-
-uses BattleField, Config, Physics, PhysicsTypes, ListOfRocket, crt;
+uses Geometry, BattleField, Config, Physics, Types, ListOfRocket, crt;
 
 procedure print(var f: BField);
 var
@@ -47,13 +46,13 @@ begin
 	parse_bfield_string(f, s);
 
 	new_pc(p, @f);
-	new_rocket(r, 9, 37, 13, -25, 0, 9.81);
+	new_rocket(r, v(9, 37), v(13, -25), v(0, 9.81));
 	push_front(p.rockets, r);
-	new_rocket(r, 52, 36, -11, -21, 0, 9.81);
+	new_rocket(r, v(52, 36), v(-11, -21), v(0, 9.81));
 	push_front(p.rockets, r);
-	new_rocket(r, 26, 31, 2, -30, 0, 9.81);
+	new_rocket(r, v(26, 31), v(2, -30), v(0, 9.81));
 	push_front(p.rockets, r);
-	new_rocket(r, 53, 36, -14, -19, 0, 9.81);
+	new_rocket(r, v(53, 36), v(-14, -19), v(0, 9.81));
 	push_front(p.rockets, r);
 	clrscr;
 	while true do

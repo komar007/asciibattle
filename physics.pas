@@ -1,18 +1,18 @@
 unit Physics;
 
 interface
-uses BattleField, PhysicsTypes, ListOfRocket;
+uses Geometry, BattleField, Types, ListOfRocket;
 
 type
 	PhysicsController = record
 		field: pBField;
 		rockets: RocketList;
-		time: real;
+		time: double;
 	end;
 
 procedure new_pc(var p: PhysicsController; bf: pBField);
 function pc_rocket_in_field(var p: PhysicsController; var r: Rocket) : boolean;
-procedure pc_step(var p: PhysicsController; delta: real);
+procedure pc_step(var p: PhysicsController; delta: double);
 
 
 implementation
@@ -30,10 +30,12 @@ var
 	pos: Vector;
 begin
 	pos := rocket_integerpos(r);
-	pc_rocket_in_field := (pos.x >= 0) and (pos.x < p.field^.width) and (pos.y < p.field^.height);
+	pc_rocket_in_field :=
+		(pos.x >= 0) and (pos.x < p.field^.width) and
+		(pos.y < p.field^.height);
 end;
 
-procedure pc_step(var p: PhysicsController; delta: real);
+procedure pc_step(var p: PhysicsController; delta: double);
 var
 	cur, t: pRocketNode; 
 begin

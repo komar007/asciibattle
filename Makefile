@@ -1,6 +1,6 @@
 all: asciibattle
 
-asciibattle: asciibattle.pas battlefield.pas physics.pas physicstypes.pas config.pas staticconfig.pas listofrocket.pas
+asciibattle: asciibattle.pas battlefield.pas physics.pas types.pas config.pas staticconfig.pas listofrocket.pas geometry.pas
 	fpc asciibattle.pas
 
 listof%.pas: list.pas.in
