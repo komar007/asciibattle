@@ -30,8 +30,8 @@ procedure rect_normalize(var r: Rect);
 
 function distance_point_line(p: Vector; l: Rect) : double;
 function point_in_rect(p: Vector; r: Rect) : Boolean;
-function collision_point_segment(p: Vector; var s: Rect; radius: double) : Boolean;
-function collision_field_segment(x, y: integer; var s: Rect) : Boolean;
+function collision_point_segment(p: Vector; s: Rect; radius: double) : Boolean;
+function collision_field_segment(x, y: integer; s: Rect) : Boolean;
 
 
 implementation
@@ -48,8 +48,7 @@ end;
 
 Operator - (a: Vector) vect: Vector;
 begin
-	vect.x := -a.x;
-	vect.y := -a.y;
+	vect := a * (-1);
 end;
 
 Operator = (a: Vector; b: Vector) eqvector : boolean;
@@ -106,7 +105,7 @@ begin
 	distance_point_line :=
 		(l.p1.y - l.p2.y) * p.x +
 		(l.p2.x - l.p1.x) * p.y +
-		l.p1.x * l.p2.y + l.p2.x * l.p1.y;
+		l.p1.x * l.p2.y - l.p2.x * l.p1.y;
 	distance_point_line := abs(distance_point_line);
 	distance_point_line := distance_point_line /
 		sqrt(intpower(l.p1.y - l.p2.y, 2) + intpower(l.p2.x - l.p1.x, 2));
@@ -120,7 +119,7 @@ begin
 		(r.p1.y < p.y) and (p.y < r.p2.y);
 end;
 
-function collision_point_segment(p: Vector; var s: Rect; radius: double) : Boolean;
+function collision_point_segment(p: Vector; s: Rect; radius: double) : Boolean;
 var
 	r: Rect;
 begin
@@ -139,7 +138,7 @@ begin
 	collision_point_segment := distance_point_line(p, s) < radius;
 end;
 
-function collision_field_segment(x, y: integer; var s: Rect) : Boolean;
+function collision_field_segment(x, y: integer; s: Rect) : Boolean;
 begin
 	collision_field_segment := collision_point_segment(v(x + 0.5, y + 0.5),
 		s, COLLISION_RADIUS);
