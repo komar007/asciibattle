@@ -1,33 +1,40 @@
 unit Geometry;
 
 interface
+uses BattleField;
+
+const
+	COLLISION_RADIUS: double = 0.50;
 
 type
+	{ Represents a point or vector on a 2d plane }
 	Vector = record
 		x: double;
 		y: double;
 	end;
 
+	{ Represents a pair of poins, a line segment or a rectangle on a 2d plane }
 	Rect = record
 		p1: Vector;
 		p2: Vector;
 	end;
 
-const
-	COLLISION_RADIUS: double = 0.50;
-
+{ Vector functions }
 function v(x, y: double) : Vector;
 
-Operator - (a: Vector) vect: Vector;
-Operator = (a: Vector; b: Vector) eqvector : boolean;
-Operator + (a: Vector; b: Vector) plusvector : Vector;
-Operator - (a: Vector; b: Vector) diff : Vector;
-Operator * (a: Vector; b: double) scalevector : Vector;
-Operator * (a: double; b: Vector) scalevector : Vector;
+{ Vector operators }
+Operator - (a: Vector) v: Vector;
+Operator = (a: Vector; b: Vector) v : boolean;
+Operator + (a: Vector; b: Vector) v : Vector;
+Operator - (a: Vector; b: Vector) v : Vector;
+Operator * (a: Vector; b: double) v : Vector;
+Operator * (a: double; b: Vector) v : Vector;
 
+{ Rect functions }
 function r(a, b: Vector) : Rect;
 procedure rect_normalize(var r: Rect);
 
+{ Collision detection functions }
 function distance_point_line(p: Vector; l: Rect) : double;
 function point_in_rect(p: Vector; r: Rect) : Boolean;
 function collision_point_segment(p: Vector; s: Rect; radius: double) : Boolean;
@@ -38,6 +45,7 @@ implementation
 uses math, Types;
 
 
+{ Creates a vector }
 function v(x, y: double) : Vector;
 begin
 	v.x := x;
@@ -46,40 +54,41 @@ end;
 
 { Vector operators }
 
-Operator - (a: Vector) vect: Vector;
+Operator - (a: Vector) v: Vector;
 begin
-	vect := a * (-1);
+	v := a * (-1);
 end;
 
-Operator = (a: Vector; b: Vector) eqvector : boolean;
+Operator = (a: Vector; b: Vector) v : boolean;
 begin
-	eqvector := (trunc(a.x) = trunc(b.x)) and (trunc(a.y) = trunc(b.y));
+	v := (trunc(a.x) = trunc(b.x)) and (trunc(a.y) = trunc(b.y));
 end;
 
-Operator + (a: Vector; b: Vector) plusvector : Vector;
+Operator + (a: Vector; b: Vector) v : Vector;
 begin
-	plusvector.x := a.x + b.x;
-	plusvector.y := a.y + b.y;
+	v.x := a.x + b.x;
+	v.y := a.y + b.y;
 end;
 
-Operator - (a: Vector; b: Vector) diff : Vector;
+Operator - (a: Vector; b: Vector) v : Vector;
 begin
-	diff := a + (-b);
+	v := a + (-b);
 end;
 
-Operator * (a: Vector; b: double) scalevector : Vector;
+Operator * (a: Vector; b: double) v : Vector;
 begin
-	scalevector.x := a.x * b;
-	scalevector.y := a.y * b;
+	v.x := a.x * b;
+	v.y := a.y * b;
 end;
 
-Operator * (a: double; b: Vector) scalevector : Vector;
+Operator * (a: double; b: Vector) v : Vector;
 begin
-	scalevector := b * a;
+	v := b * a;
 end;
 
 { Rect functions }
 
+{ Creates a rect }
 function r(a, b: Vector) : Rect;
 begin
 	r.p1 := a;
@@ -100,6 +109,7 @@ end;
 
 { Collision detection }
 
+{ Counts the euclidean distance between a line and point on a 2d plane }
 function distance_point_line(p: Vector; l: Rect) : double;
 begin
 	distance_point_line :=
@@ -111,6 +121,7 @@ begin
 		sqrt(intpower(l.p1.y - l.p2.y, 2) + intpower(l.p2.x - l.p1.x, 2));
 end;
 
+{ Checks if a point is inside of a rectangle }
 function point_in_rect(p: Vector; r: Rect) : Boolean;
 begin	
 	rect_normalize(r);
@@ -119,6 +130,7 @@ begin
 		(r.p1.y < p.y) and (p.y < r.p2.y);
 end;
 
+{ Checks if a point is at most at distance radius from a line segment }
 function collision_point_segment(p: Vector; s: Rect; radius: double) : Boolean;
 var
 	r: Rect;
@@ -138,6 +150,7 @@ begin
 	collision_point_segment := distance_point_line(p, s) < radius;
 end;
 
+{ Checks for intersection between a field and line segment }
 function collision_field_segment(x, y: integer; s: Rect) : Boolean;
 begin
 	collision_field_segment := collision_point_segment(v(x + 0.5, y + 0.5),
