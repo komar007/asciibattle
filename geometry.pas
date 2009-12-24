@@ -3,10 +3,6 @@ unit Geometry;
 interface
 uses BattleField;
 
-const
-	COLLISION_RADIUS: double = 0.50;
-	INF: integer = 10000;
-
 type
 	{ Represents a point or vector on a 2d plane }
 	Vector = record
@@ -25,6 +21,10 @@ type
 		p2: Vector;
 	end;
 
+const
+	COLLISION_RADIUS: double = 0.60;
+	NOWHERE: IntVector = (x:10000; y:10000);
+
 { Vector functions }
 function v(x, y: double) : Vector;
 function v(vec: IntVector) : Vector;
@@ -40,6 +40,7 @@ Operator - (a: Vector; b: Vector) v : Vector;
 Operator * (a: Vector; b: double) v : Vector;
 Operator * (a: double; b: Vector) v : Vector;
 Operator + (a: IntVector; b: IntVector) v : IntVector;
+Operator = (a: IntVector; b: IntVector) v : Boolean;
 
 { Rect functions }
 function r(a, b: Vector) : Rect;
@@ -127,6 +128,11 @@ begin
 	v.y := a.y + b.y;
 end;
 
+Operator = (a: IntVector; b: IntVector) v : Boolean;
+begin
+	v := (a.x = b.x) and (a.y = b.y);
+end;
+
 { Rect functions }
 
 { Creates a rect }
@@ -171,8 +177,8 @@ function point_in_rect(p: Vector; r: Rect) : Boolean;
 begin	
 	rect_normalize(r);
 	point_in_rect :=
-		(r.p1.x < p.x) and (p.x < r.p2.x) and
-		(r.p1.y < p.y) and (p.y < r.p2.y);
+		(r.p1.x <= p.x) and (p.x <= r.p2.x) and
+		(r.p1.y <= p.y) and (p.y <= r.p2.y);
 end;
 
 { Checks if a point is at most at distance radius from a line segment }
@@ -185,7 +191,7 @@ begin
 	rect_normalize(r);
 	r.p1 := r.p1 - v(radius, radius);
 	r.p2 := r.p2 + v(radius, radius);
-	if not point_in_rect(p, s) then
+	if not point_in_rect(p, r) then
 	begin
 		collision_point_segment := false;
 		exit;
@@ -205,16 +211,19 @@ end;
 function first_collision(var f: BField; s: Rect) : IntVector;
 var
 	r: Rect;
+	best: IntVector;
 	i, j: integer;
 begin
 	r := s;
 	rect_normalize(r);
-	first_collision := iv(INF, INF);
-	for j := trunc(r.p1.y) to trunc(r.p2.y) do
-		for i := trunc(r.p1.x) to trunc(r.p2.x) do
-			if (dist(v(i + 0.5, j + 0.5), s.p1) < dist(v(first_collision) + v(0.5, 0.5), s.p1)) and
+	best := NOWHERE;
+	for j := max(trunc(r.p1.y), 0) to min(trunc(r.p2.y), f.height - 1) do
+		for i := max(trunc(r.p1.x), 0) to min(trunc(r.p2.x), f.width - 1) do
+			if (f.arr[i, j].hp <> 0) and
+				(dist(v(i + 0.5, j + 0.5), s.p1) < dist(v(best) + v(0.5, 0.5), s.p1)) and
 				collision_field_segment(iv(i, j), s) then
-				first_collision := iv(i, j);	
+				best := iv(i, j);	
+	first_collision := best;
 end;
 
 

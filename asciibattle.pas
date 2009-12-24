@@ -1,4 +1,7 @@
 program ASCIIBattle;
+{$ifdef fpc}
+{$mode objfpc}
+{$endif}
 uses Geometry, BattleField, Config, Physics, Types, ListOfRocket, crt;
 
 procedure print(var f: BField);
@@ -31,8 +34,11 @@ var
 	s, t: ansistring;
 	pl: text;
 	p: PhysicsController;
-	r: Rocket;
+	ro: Rocket;
 	cr: pRocketNode;
+	a: IntVector;
+	x1, x2, y1, y2: integer;
+	c: char;
 begin
 	new_bfield(f, 60, 40);
 	assign(pl, 'field');
@@ -45,20 +51,36 @@ begin
 	end;
 	parse_bfield_string(f, s);
 
+	x1 := 2;
+	y1 := 4;
+	x2 := 25;
+	y2 := 35;
+
 	new_pc(p, @f);
-	new_rocket(r, v(9, 37), v(13, -25), v(0, 9.81));
-	push_front(p.rockets, r);
-	new_rocket(r, v(52, 36), v(-11, -21), v(0, 9.81));
-	push_front(p.rockets, r);
-	new_rocket(r, v(26, 31), v(2, -30), v(0, 9.81));
-	push_front(p.rockets, r);
-	new_rocket(r, v(53, 36), v(-14, -19), v(0, 9.81));
-	push_front(p.rockets, r);
+	new_rocket(ro, v(9, 33), v(11, -10), v(0, 9.81));
+	push_front(p.rockets, ro);
+	new_rocket(ro, v(52, 30), v(-11, -21), v(0, 9.81));
+	push_front(p.rockets, ro);
+	new_rocket(ro, v(26, 29), v(2, -30), v(0, 9.81));
+	push_front(p.rockets, ro);
+	new_rocket(ro, v(53, 30), v(-14, -19), v(0, 9.81));
+	push_front(p.rockets, ro);
 	clrscr;
 	while true do
 	begin
+		a := first_collision(f, r(v(x1+0.5,y1+0.5), v(x2+0.5,y2+0.5)));
 		gotoxy(1,1);
 		print(f);
+		gotoxy(a.x + 1, a.y + 1);
+		textcolor(Red);
+		write('X');
+		gotoxy(x1+1, y1+1);
+		textcolor(Blue);
+		write('a');
+		gotoxy(x2+1, y2+1);
+		textcolor(Blue);
+		write('b');
+		textcolor(White);
 		cr := p.rockets.head;
 		while cr <> nil do
 		begin
@@ -72,6 +94,20 @@ begin
 		pc_step(p, 0.1);
 		delay(35);
 		if keypressed then
-			break;
+		begin
+			c := readkey;
+			case c of
+				#27: break;
+				#0: begin
+					c := readkey;
+					case c of
+						#72: dec(y1);
+						#80: inc(y1);
+						#75: dec(x1);
+						#77: inc(x1);
+					end;
+				end;
+			end;
+		end;
 	end;
 end.

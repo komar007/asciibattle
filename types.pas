@@ -8,6 +8,7 @@ type
 		acceleration: Vector;
 		velocity: Vector;
 		position: Vector;
+		oldpos: Vector;
 	end;
 
 Operator = (a: Rocket; b: Rocket) eqrocket : boolean;
@@ -31,6 +32,7 @@ end;
 
 procedure new_rocket(var r: Rocket; pos: Vector; vel: Vector; acc: Vector);
 begin
+	r.oldpos := pos;
 	r.position := pos;
 	r.velocity := vel;
 	r.acceleration := acc;
@@ -38,6 +40,7 @@ end;
 
 procedure rocket_step(var r: Rocket; delta: double);
 begin
+	r.oldpos := r.position;
 	r.velocity := r.velocity + (r.acceleration * delta);
 	r.position := r.position + (r.velocity * delta);
 end;
