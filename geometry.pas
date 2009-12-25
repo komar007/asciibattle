@@ -28,6 +28,8 @@ const
 { Vector functions }
 function v(x, y: double) : Vector;
 function v(vec: IntVector) : Vector;
+function fc(vec: IntVector) : Vector;
+function fc(x, y: integer) : Vector;
 function iv(x, y: integer) : IntVector;
 function iv(vec: Vector) : IntVector;
 function len(vec: Vector) : double;
@@ -70,6 +72,17 @@ function v(vec: IntVector) : Vector;
 begin
 	v.x := vec.x;
 	v.y := vec.y;
+end;
+
+{ Returns the centre point of field }
+function fc(vec: IntVector) : Vector;
+begin
+	fc := v(vec) + v(0.5, 0.5);
+end;
+
+function fc(x, y: integer) : Vector;
+begin
+	fc := v(x, y) + v(0.5, 0.5);
 end;
 
 function iv(x, y: integer) : IntVector;
@@ -204,8 +217,7 @@ end;
 { Checks for intersection between a field and line segment }
 function collision_field_segment(vec: IntVector; s: Rect) : Boolean;
 begin
-	collision_field_segment := collision_point_segment(v(vec) + v(0.5, 0.5),
-		s, COLLISION_RADIUS);
+	collision_field_segment := collision_point_segment(fc(vec), s, COLLISION_RADIUS);
 end;
 
 function first_collision(var f: BField; s: Rect) : IntVector;
@@ -220,7 +232,7 @@ begin
 	for j := max(trunc(r.p1.y), 0) to min(trunc(r.p2.y), f.height - 1) do
 		for i := max(trunc(r.p1.x), 0) to min(trunc(r.p2.x), f.width - 1) do
 			if (f.arr[i, j].hp <> 0) and
-				(dist(v(i + 0.5, j + 0.5), s.p1) < dist(v(best) + v(0.5, 0.5), s.p1)) and
+				(dist(fc(i, j), s.p1) < dist(fc(best), s.p1)) and
 				collision_field_segment(iv(i, j), s) then
 				best := iv(i, j);	
 	first_collision := best;

@@ -68,7 +68,7 @@ begin
 	clrscr;
 	while true do
 	begin
-		a := first_collision(f, r(v(x1+0.5,y1+0.5), v(x2+0.5,y2+0.5)));
+		a := first_collision(f, r(fc(x1,y1), fc(x2,y2)));
 		gotoxy(1,1);
 		print(f);
 		gotoxy(a.x + 1, a.y + 1);

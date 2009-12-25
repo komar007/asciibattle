@@ -38,6 +38,7 @@ end;
 procedure pc_step(var p: PhysicsController; delta: double);
 var
 	cur, t: pRocketNode;
+	collision: IntVector;
 begin
 	cur := p.rockets.head;
 	while cur <> nil do
@@ -45,9 +46,13 @@ begin
 		rocket_step(cur^.v, delta);
 		t := cur;
 		cur := cur^.next;
+		{ Find the first collision on a segment-approximated partial path from
+		oldpos to position }
+		collision := first_collision(p.field^, r(t^.v.oldpos, t^.v.position));
+		if collision <> NOWHERE then
+			remove(p.rockets, t)
+		else
 		if not pc_rocket_in_field(p, t^.v) then
-			remove(p.rockets, t);
-		if first_collision(p.field^, r(t^.v.oldpos, t^.v.position)) <> NOWHERE then
 			remove(p.rockets, t);
 	end;
 
