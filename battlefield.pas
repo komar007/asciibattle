@@ -6,6 +6,7 @@ type
 	BFieldElement = record
 		hp: double;
 		current_hp: double;
+		previous_hp: double;
 		hp_speed: double;
 	end;
 
@@ -14,7 +15,8 @@ type
 		arr: array of array of BFieldElement;
 	end;
 
-	pBfield = ^BField;
+	pBField = ^BField;
+	pBFieldElement = ^BFieldElement;
 
 procedure new_bfield(var field: BField; x, y: integer);
 

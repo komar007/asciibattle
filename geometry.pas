@@ -27,7 +27,6 @@ const
 
 { Vector functions }
 function v(x, y: double) : Vector;
-function v(vec: IntVector) : Vector;
 function fc(vec: IntVector) : Vector;
 function fc(x, y: integer) : Vector;
 function iv(x, y: integer) : IntVector;
@@ -58,7 +57,7 @@ function first_collision(var f: BField; s: Rect) : IntVector;
 
 
 implementation
-uses math, Types;
+uses math, Types, StaticConfig;
 
 
 { Creates a vector }
@@ -68,22 +67,16 @@ begin
 	v.y := y;
 end;
 
-function v(vec: IntVector) : Vector;
-begin
-	v.x := vec.x;
-	v.y := vec.y;
-end;
-
 { Returns the centre point of field }
 function fc(vec: IntVector) : Vector;
 begin
-	fc := v(vec) + v(0.5, 0.5);
+	fc := fc(vec.x, vec.y);
 end;
 
 { Returns field's center }
 function fc(x, y: integer) : Vector;
 begin
-	fc := v(x, y) + v(0.5, 0.5);
+	fc := v(x * FIELD_WIDTH + 0.5 * FIELD_WIDTH, y * FIELD_HEIGHT + 0.5 * FIELD_HEIGHT);
 end;
 
 function iv(x, y: integer) : IntVector;
@@ -92,10 +85,11 @@ begin
 	iv.y := y;
 end;
 
+{ Converts floating-point coordinates to coordinates of a field }
 function iv(vec: Vector) : IntVector;
 begin
-	iv.x := trunc(vec.x);
-	iv.y := trunc(vec.y);
+	iv.x := trunc(vec.x / FIELD_WIDTH);
+	iv.y := trunc(vec.y / FIELD_HEIGHT);
 end;
 
 function len(vec: Vector) : double;
@@ -203,8 +197,8 @@ begin
 	{ Check if the point lays in a sensible rectangle delimiting the segment } 
 	r := s;
 	rect_normalize(r);
-	r.p1 := r.p1 - v(radius, radius);
-	r.p2 := r.p2 + v(radius, radius);
+	r.p1 := r.p1 - v(radius * FIELD_WIDTH, radius * FIELD_HEIGHT);
+	r.p2 := r.p2 + v(radius * FIELD_WIDTH, radius * FIELD_HEIGHT);
 	if not point_in_rect(p, r) then
 	begin
 		collision_point_segment := false;
@@ -212,7 +206,7 @@ begin
 	end;
 	{ If the point is in the rectangle, it is sufficient to check the distance
 	to the line }
-	collision_point_segment := distance_point_line(p, s) < radius;
+	collision_point_segment := distance_point_line(p, s) < max(FIELD_HEIGHT, FIELD_WIDTH) * radius;
 end;
 
 { Checks for intersection between a field and line segment }
@@ -225,13 +219,16 @@ function first_collision(var f: BField; s: Rect) : IntVector;
 var
 	r: Rect;
 	best: IntVector;
+	b, e: IntVector;
 	i, j: integer;
 begin
 	r := s;
 	rect_normalize(r);
 	best := NOWHERE;
-	for j := max(trunc(r.p1.y), 0) to min(trunc(r.p2.y), f.height - 1) do
-		for i := max(trunc(r.p1.x), 0) to min(trunc(r.p2.x), f.width - 1) do
+	b := iv(r.p1);
+	e := iv(r.p2);
+	for j := max(b.y, 0) to min(e.y, f.height - 1) do
+		for i := max(b.x, 0) to min(e.x, f.width - 1) do
 			if (f.arr[i, j].hp <> 0) and
 				(dist(fc(i, j), s.p1) < dist(fc(best), s.p1)) and
 				collision_field_segment(iv(i, j), s) then

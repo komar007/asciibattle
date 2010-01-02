@@ -3,7 +3,7 @@ TYPES=Rocket IntVector
 all: asciibattle
 
 asciibattle: asciibattle.pas battlefield.pas physics.pas types.pas config.pas staticconfig.pas lists.pas geometry.pas
-	fpc asciibattle.pas
+	fpc -g -Mobjfpc asciibattle.pas
 
 lists.pas: list.pas.in listimpl.pas.in
 	echo "unit Lists;" > lists.pas

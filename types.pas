@@ -9,6 +9,7 @@ type
 		velocity: Vector;
 		position: Vector;
 		oldpos: Vector;
+		removed: boolean;
 		exp_radius: integer;
 		exp_force: double;
 	end;
@@ -17,7 +18,6 @@ Operator = (a: Rocket; b: Rocket) eqrocket : boolean;
 
 procedure new_rocket(var r: Rocket; pos: Vector; vel: Vector; acc: Vector; rad: integer; f: double);
 procedure rocket_step(var r: Rocket; delta: double);
-function rocket_integerpos(var r: Rocket) : IntVector;
 
 
 implementation
@@ -38,6 +38,7 @@ begin
 	r.position := pos;
 	r.velocity := vel;
 	r.acceleration := acc;
+	r.removed := false;
 	r.exp_radius := rad;
 	r.exp_force := f;
 end;
@@ -47,12 +48,6 @@ begin
 	r.oldpos := r.position;
 	r.velocity := r.velocity + (r.acceleration * delta);
 	r.position := r.position + (r.velocity * delta);
-end;
-
-function rocket_integerpos(var r: Rocket) : IntVector;
-begin
-	rocket_integerpos.x := trunc(r.position.x);
-	rocket_integerpos.y := trunc(r.position.y);
 end;
 
 begin
