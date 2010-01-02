@@ -4,7 +4,9 @@ interface
 
 type
 	BFieldElement = record
-		hp: integer;
+		hp: double;
+		current_hp: double;
+		hp_speed: double;
 	end;
 
 	BField = record

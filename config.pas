@@ -62,6 +62,8 @@ begin
 		begin
 			el_type := ord(field_str[i]) - ord('0');
 			field.arr[x, y].hp := INITIAL_HP[el_type];
+			field.arr[x, y].current_hp := field.arr[x, y].hp;
+			field.arr[x, y].hp_speed := 0;
 			inc(x);
 			if not (x < w) then
 			begin

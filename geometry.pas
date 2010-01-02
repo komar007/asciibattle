@@ -80,6 +80,7 @@ begin
 	fc := v(vec) + v(0.5, 0.5);
 end;
 
+{ Returns field's center }
 function fc(x, y: integer) : Vector;
 begin
 	fc := v(x, y) + v(0.5, 0.5);

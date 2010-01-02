@@ -9,11 +9,13 @@ type
 		velocity: Vector;
 		position: Vector;
 		oldpos: Vector;
+		exp_radius: integer;
+		exp_force: double;
 	end;
 
 Operator = (a: Rocket; b: Rocket) eqrocket : boolean;
 
-procedure new_rocket(var r: Rocket; pos: Vector; vel: Vector; acc: Vector);
+procedure new_rocket(var r: Rocket; pos: Vector; vel: Vector; acc: Vector; rad: integer; f: double);
 procedure rocket_step(var r: Rocket; delta: double);
 function rocket_integerpos(var r: Rocket) : IntVector;
 
@@ -30,12 +32,14 @@ end;
 
 { Rocket functions }
 
-procedure new_rocket(var r: Rocket; pos: Vector; vel: Vector; acc: Vector);
+procedure new_rocket(var r: Rocket; pos: Vector; vel: Vector; acc: Vector; rad: integer; f: double);
 begin
 	r.oldpos := pos;
 	r.position := pos;
 	r.velocity := vel;
 	r.acceleration := acc;
+	r.exp_radius := rad;
+	r.exp_force := f;
 end;
 
 procedure rocket_step(var r: Rocket; delta: double);
