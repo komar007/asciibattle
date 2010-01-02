@@ -27,7 +27,7 @@ end;
 
 function pc_rocket_in_field(var p: PhysicsController; var r: Rocket) : boolean;
 var
-	pos: Vector;
+	pos: IntVector;
 begin
 	pos := rocket_integerpos(r);
 	pc_rocket_in_field :=
