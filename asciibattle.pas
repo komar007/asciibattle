@@ -2,7 +2,7 @@ program ASCIIBattle;
 {$ifdef fpc}
 {$mode objfpc}
 {$endif}
-uses Geometry, BattleField, StaticConfig, Config, Physics, Types, ListOfRocket, crt;
+uses Geometry, BattleField, StaticConfig, Config, Physics, Types, Lists, crt;
 
 procedure print(var f: BField);
 var

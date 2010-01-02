@@ -1,13 +1,19 @@
 unit Physics;
 
 interface
-uses Geometry, BattleField, Types, ListOfRocket, StaticConfig;
+uses Geometry, BattleField, Types, Lists, StaticConfig;
 
 type
 	PhysicsController = record
 		field: pBField;
 		rockets: RocketList;
+		animlist: IntVectorList;
 		time: double;
+	end;
+
+type
+	asdasd = record
+		a: integer;
 	end;
 
 procedure new_pc(var p: PhysicsController; bf: pBField);
