@@ -17,7 +17,6 @@ type
 Operator = (a: Rocket; b: Rocket) eqrocket : boolean;
 
 procedure new_rocket(var r: Rocket; pos: Vector; vel: Vector; acc: Vector; rad: integer; f: double);
-procedure rocket_step(var r: Rocket; delta: double);
 
 
 implementation
@@ -41,13 +40,6 @@ begin
 	r.removed := false;
 	r.exp_radius := rad;
 	r.exp_force := f;
-end;
-
-procedure rocket_step(var r: Rocket; delta: double);
-begin
-	r.oldpos := r.position;
-	r.velocity := r.velocity + (r.acceleration * delta);
-	r.position := r.position + (r.velocity * delta);
 end;
 
 begin

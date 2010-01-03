@@ -69,7 +69,7 @@ var
 	time, nextshot: double;
 begin
 	randomize;
-	new_bfield(f, 171, 69);
+	new_bfield(f, 79, 22);
 	assign(pl, ParamStr(1));
 	reset(pl);
 	readln(pl, s);
@@ -93,7 +93,12 @@ begin
 		time := time + 0.03;
 		if abs(nextshot - time) < 0.1 then
 		begin
-			new_rocket(ro, v(random(f.width) * FIELD_WIDTH, random(f.height) * FIELD_HEIGHT), v(random(30) - 15, random(20) - 20), v(0, 9.81), random(2) + 1, random(60) + 70);
+			new_rocket(ro,
+				v(random(f.width) * FIELD_WIDTH, random(f.height) * FIELD_HEIGHT),
+				v(random(20) - 10, random(16) - 16),
+				v(random(10)/5, 9.81),
+				random(2) + 1,
+				random(60) + 70);
 			if f.arr[iv(ro.position).x, iv(ro.position).y].current_hp = 0 then
 			begin
 				push_front(p.rockets, ro);
