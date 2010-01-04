@@ -1,9 +1,9 @@
 TYPES=Rocket IntVector
 
-all: asciibattle
+all: early_demo
 
-asciibattle: asciibattle.pas battlefield.pas physics.pas types.pas config.pas staticconfig.pas lists.pas geometry.pas
-	fpc -g -Mobjfpc asciibattle.pas
+early_demo: early_demo.pas battlefield.pas physics.pas types.pas config.pas staticconfig.pas lists.pas geometry.pas
+	fpc -g -Mobjfpc early_demo.pas
 
 lists.pas: list.pas.in listimpl.pas.in
 	echo "unit Lists;" > lists.pas
@@ -19,6 +19,6 @@ lists.pas: list.pas.in listimpl.pas.in
 	echo "end." >> lists.pas
 
 clean:
-	rm -fr *.o *.ppu listof*.pas asciibattle
+	rm -fr *.o *.ppu listof*.pas early_demo
 
 
