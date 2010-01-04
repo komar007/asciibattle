@@ -1,9 +1,12 @@
 TYPES=Rocket IntVector
 
-all: early_demo
+all: iface_test early_demo
 
 early_demo: early_demo.pas battlefield.pas physics.pas types.pas config.pas staticconfig.pas lists.pas geometry.pas
 	fpc -g -Mobjfpc early_demo.pas
+
+iface_test: iface_test.pas crtinterface.pas
+	fpc -g -Mobjfpc iface_test.pas
 
 lists.pas: list.pas.in listimpl.pas.in
 	echo "unit Lists;" > lists.pas
