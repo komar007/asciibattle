@@ -1,14 +1,20 @@
 unit CrtInterface;
 
 interface
-uses Game, Geometry;
+uses Game, Geometry, Lists, Crt;
 
 type
 	WhichPanel = (Top, Bottom);
 
+	CharOnScreen = record
+		colors: byte;
+		ch: char;
+	end;
+
 	ViewPort = record
 		anchor: IntVector;
 		width, height: integer;
+		screen: array of array of CharOnScreen;
 	end;
 
 	ABInterface = record
@@ -25,18 +31,17 @@ procedure iface_step(var iface: ABInterface);
 
 
 implementation
-uses Crt, StaticConfig,
+uses StaticConfig,
 {$ifdef LINUX}
 	termio, BaseUnix,
 {$endif}
 	strutils, math;
 
 
-type
-	CharOnScreen = record
-		colors: byte;
-		ch: char;
-	end;
+Operator =(a, b: CharOnScreen) eq : boolean;
+begin
+	eq := (a.colors = b.colors) and (a.ch = b.ch);
+end;
 
 procedure ScreenSize(var x, y: integer);
 var
@@ -59,6 +64,30 @@ begin
 	view.anchor := iv(x, y);
 	view.height := 0;
 	view.width := 0;
+end;
+
+procedure resize_viewport(var view: ViewPort; w, h: integer);
+begin
+	if (w > view.width) or (h > view.height) then
+		setlength(view.screen, w, h);
+	view.width := w;
+	view.height := h;
+end;
+
+function point_in_viewport(var view: ViewPort; p: IntVector) : boolean;
+begin
+	point_in_viewport := (p.x >= 0) and (p.x < view.width) and
+		(p.y >= 0) and (p.y < view.height);
+end;
+
+function viewport_to_field_position(var view: ViewPort; p: IntVector) : IntVector;
+begin
+	viewport_to_field_position := p + view.anchor;
+end;
+
+function field_to_viewport_position(var view: ViewPort; p: IntVector) : IntVector;
+begin
+	field_to_viewport_position := p - view.anchor;
 end;
 
 procedure new_abinterface(var iface: ABInterface; gc: pGameController);
@@ -166,20 +195,21 @@ begin
 	GotoXY(old_x, old_y);
 end;
 
+{ Returns what char should be at position (x, y) relative to the origin of viewport }
 function render_char(var iface: ABInterface; x, y: integer) : CharOnScreen;
 var
-	real_pos: IntVector;
+	field_pos: IntVector;
 begin
-	real_pos := iv(x, y) + iface.view.anchor;
-	if (real_pos.x < 0) or (real_pos.x > iface.gc^.pc^.field^.width - 1) or
-		(real_pos.y < 0) or (real_pos.y > iface.gc^.pc^.field^.height - 1) then
+	field_pos := viewport_to_field_position(iface.view, iv(x, y));
+	if (field_pos.x < 0) or (field_pos.x > iface.gc^.pc^.field^.width - 1) or
+		(field_pos.y < 0) or (field_pos.y > iface.gc^.pc^.field^.height - 1) then
 	begin
 		render_char.ch := ' ';
 		render_char.colors := (Black << 4) or White;
 		exit;
 	end;
 	
-	case trunc(iface.gc^.pc^.field^.arr[real_pos.x, real_pos.y].current_hp) of
+	case trunc(iface.gc^.pc^.field^.arr[field_pos.x, field_pos.y].current_hp) of
 	0:
 		render_char.ch := CH[0];
 	1..10:
@@ -207,22 +237,29 @@ begin
 	render_char.colors := (Black << 4) or Green;
 end;
 
+{ Prints a char to the screen }
+procedure putchar(c: CharOnScreen);
+begin
+	//TextBackground(c.colors >> 4);
+	//TextColor(c.colors and $0f);
+	write(c.ch);
+end;
+
+{ Does a full redraw of the viewport part of string }
 procedure iface_redraw_viewport(var iface: ABInterface);
 var
 	c: CharOnScreen;
 	i, j: integer;
 begin
-	GotoXY(1, 2);
 	for j := 0 to iface.view.height - 1 do
 	begin
+		GotoXY(1, j + 2);
 		for i := 0 to iface.view.width - 1 do
 		begin
 			c := render_char(iface, i, j);
-			TextBackground(c.colors >> 4);
-			TextColor(c.colors and $0f);
-			write(c.ch);
+			iface.view.screen[i, j] := c;
+			putchar(c);
 		end;
-		writeln;
 	end;
 end;
 
@@ -232,9 +269,47 @@ begin
 	{ Update the panels }
 	update_panel(iface, Top, iface.paneltl, iface.paneltc, iface.paneltr);
 	update_panel(iface, Bottom, iface.panelbl, iface.panelbc, iface.panelbr);
-
 	iface_redraw_viewport(iface);
 end;
+
+procedure viewport_update(var iface: ABInterface);
+var
+	cur: pIntVectorNode;
+	c: CharOnScreen;
+	pos_viewport: IntVector;
+begin
+	GotoXY(1,1);
+	cur := iface.gc^.pc^.animlist.head;
+	while cur <> nil do
+	begin
+		{ Find where the field is in the viewport }
+		pos_viewport := field_to_viewport_position(iface.view, cur^.v);
+		if point_in_viewport(iface.view, pos_viewport) then
+		begin
+			c := render_char(iface, pos_viewport.x, pos_viewport.y);
+			{ if the character needs to be updated... }
+			if c <> iface.view.screen[pos_viewport.x, pos_viewport.y] then
+			begin
+				GotoXY(pos_viewport.x + 1, pos_viewport.y + 2);
+				if WhereX = 3 then
+					halt;
+				iface.view.screen[pos_viewport.x, pos_viewport.y] := c;
+				putchar(c);
+			end;
+		end;
+		cur := cur^.next;
+	end;
+end;
+
+procedure iface_update(var iface: ABInterface);
+begin
+	revert_standard_colors;
+	{ FIXME: Update panels only if necessary }
+	update_panel(iface, Top, iface.paneltl, iface.paneltc, iface.paneltr);
+	update_panel(iface, Bottom, iface.panelbl, iface.panelbc, iface.panelbr);
+	viewport_update(iface);
+end;
+
 
 procedure iface_step(var iface: ABInterface);
 var
@@ -243,19 +318,17 @@ begin
 	old_w := iface.width;
 	old_h := iface.height;
 	ScreenSize(iface.width, iface.height);
-	if (old_w <> iface.width) or (old_h <> iface.height) or True then
+	if (old_w <> iface.width) or (old_h <> iface.height) then
 	begin
 		{ Recalculate viewport dimensions }
-		iface.view.width := iface.width;
-		iface.view.height := iface.height - 2;
+		resize_viewport(iface.view, iface.width, iface.height - 2);
 		{ Redraw the whole screen }
-		clrscr; { temporary! }
 		iface_redraw(iface);
 	end
 	else
 	begin
 		{ Perform normal update }
-		exit;
+		iface_update(iface);
 	end;
 end;
 

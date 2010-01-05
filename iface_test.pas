@@ -26,6 +26,7 @@ begin
 	while true do
 	begin
 		iface.panelbl := IntToStr(gc.pc^.rockets.size);
+		iface.panelbr := IntToStr(iface.view.width) + ', ' + IntToStr(iface.view.height);
 		gc_step(gc, 0.033);
 		iface_step(iface);
 		if keypressed then

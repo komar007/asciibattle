@@ -1,9 +1,10 @@
 unit Config;
 
 interface
-uses BattleField, StaticConfig;
+uses BattleField, Geometry, StaticConfig;
 
-function parse_bfield_string(var field: BField; field_str: ansistring) : integer;
+function parse_bfield_dimensions(var field_str: ansistring; var w, h: integer) : integer;
+function parse_bfield_string(var field: BField; var field_str: ansistring) : integer;
 
 
 implementation
@@ -38,15 +39,22 @@ begin
 	parse_num := s;
 end;	
 
-function parse_bfield_string(var field: BField; field_str: ansistring) : integer;
+function parse_bfield_dimensions(var field_str: ansistring; var w, h: integer) : integer;
+var
+	i: integer;
+begin
+	i := parse_num(field_str, 1, w);
+	parse_bfield_dimensions := parse_num(field_str, i, h);
+end;
+
+function parse_bfield_string(var field: BField; var field_str: ansistring) : integer;
 var
 	i: integer;
 	len: integer;
 	el_type: integer;
 	w, h, x, y: integer;
 begin
-	i := parse_num(field_str, 1, w);
-	i := parse_num(field_str, i, h);
+	i := parse_bfield_dimensions(field_str, w, h);
 
 	if (field.width < w) or (field.height < h) then
 	begin

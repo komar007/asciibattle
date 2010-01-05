@@ -6,7 +6,6 @@ early_demo: early_demo.pas battlefield.pas physics.pas types.pas config.pas stat
 	fpc -g -Mobjfpc early_demo.pas
 
 iface_test: iface_test.pas crtinterface.pas game.pas battlefield.pas physics.pas types.pas config.pas staticconfig.pas lists.pas geometry.pas
-
 	fpc -g -Mobjfpc iface_test.pas
 
 lists.pas: list.pas.in listimpl.pas.in
