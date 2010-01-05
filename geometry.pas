@@ -41,6 +41,7 @@ Operator - (a: Vector; b: Vector) v : Vector;
 Operator * (a: Vector; b: double) v : Vector;
 Operator * (a: double; b: Vector) v : Vector;
 Operator + (a: IntVector; b: IntVector) v : IntVector;
+Operator - (a: IntVector; b: IntVector) v : IntVector;
 Operator = (a: IntVector; b: IntVector) v : Boolean;
 
 { Rect functions }
@@ -134,6 +135,12 @@ Operator + (a: IntVector; b: IntVector) v : IntVector;
 begin
 	v.x := a.x + b.x;
 	v.y := a.y + b.y;
+end;
+
+Operator - (a: IntVector; b: IntVector) v : IntVector;
+begin
+	v.x := a.x - b.x;
+	v.y := a.y - b.y;
 end;
 
 Operator = (a: IntVector; b: IntVector) v : Boolean;

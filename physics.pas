@@ -11,6 +11,8 @@ type
 		time: double;
 	end;
 
+	pPhysicsController = ^PhysicsController;
+
 type
 	asdasd = record
 		a: integer;
@@ -18,6 +20,7 @@ type
 
 procedure new_pc(var p: PhysicsController; bf: pBField);
 procedure pc_step(var p: PhysicsController; delta: double);
+procedure pc_add_rocket(var p: PhysicsController; r: Rocket);
 
 
 implementation
@@ -149,6 +152,11 @@ begin
 	fields_step(p, delta);
 	{ Update time }
 	p.time := p.time + delta;
+end;
+
+procedure pc_add_rocket(var p: PhysicsController; r: Rocket);
+begin
+	push_front(p.rockets, r);
 end;
 
 begin
