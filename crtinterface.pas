@@ -1,6 +1,7 @@
 unit CrtInterface;
 
 interface
+uses Game;
 
 type
 	WhichPanel = (Top, Bottom);
