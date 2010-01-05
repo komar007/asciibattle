@@ -22,6 +22,6 @@ lists.pas: list.pas.in listimpl.pas.in
 	echo "end." >> lists.pas
 
 clean:
-	rm -fr *.o *.ppu listof*.pas early_demo
+	rm -fr *.o *.ppu listof*.pas early_demo iface_test
 
 
