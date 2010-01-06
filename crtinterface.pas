@@ -22,6 +22,7 @@ type
 		{ Screen buffer to make sure only necessary updates are made
 		  and assure the minimal number of IO operations }
 		screen: array of array of CharOnScreen;
+		needs_redraw: boolean;
 	end;
 
 	ABInterface = record
@@ -29,6 +30,7 @@ type
 		view: ViewPort;
 		gc: pGameController;
 		paneltl, paneltc, paneltr, panelbl, panelbc, panelbr: string;
+		exitting: boolean;
 	end;
 
 procedure new_abinterface(var iface: ABInterface; gc: pGameController);
@@ -44,6 +46,16 @@ uses StaticConfig,
 {$endif}
 	strutils, math;
 
+
+const
+	{ Special keycodes }
+	Left = chr(75);
+	Right = chr(77);
+	Up = chr(72);
+	Down = chr(80);
+	{ Normal keycodes }
+	Enter = chr(13);
+	Escape = chr(27);
 
 Operator =(a, b: CharOnScreen) eq : boolean;
 begin
@@ -72,6 +84,7 @@ begin
 	view.origin := iv(x, y);
 	view.height := 0;
 	view.width := 0;
+	view.needs_redraw := True;
 end;
 
 procedure resize_viewport(var view: ViewPort; w, h: integer);
@@ -102,12 +115,19 @@ begin
 	field_to_viewport_position := p - view.origin;
 end;
 
+procedure viewport_move(var view: ViewPort; offset: IntVector);
+begin
+	view.origin := view.origin + offset;
+	view.needs_redraw := True;
+end;
+
 procedure new_abinterface(var iface: ABInterface; gc: pGameController);
 begin
 	new_viewport(iface.view, 0, 0);
 	iface.width := 0;
 	iface.height := 0;
 	iface.gc := gc;
+	iface.exitting := False;
 end;
 
 function template_width(t: string) : integer;
@@ -273,6 +293,7 @@ begin
 			putchar(c);
 		end;
 	end;
+	iface.view.needs_redraw := False;
 end;
 
 procedure iface_redraw(var iface: ABInterface);
@@ -321,6 +342,36 @@ begin
 	viewport_update(iface);
 end;
 
+procedure read_input(var iface: ABInterface);
+var
+	c, prev: char;
+begin
+	if not KeyPressed then
+		exit;
+	c := chr(255);
+	while KeyPressed do
+	begin
+		prev := c;
+		c := ReadKey;
+	end;
+	if prev = chr(0) then
+		case c of
+		Left:
+			viewport_move(iface.view, iv(-1, 0));
+		Right:
+			viewport_move(iface.view, iv(1, 0));
+		Up:
+			viewport_move(iface.view, iv(0, -1));
+		Down:
+			viewport_move(iface.view, iv(0, 1));
+		end
+	else
+		case c of
+		Escape:
+			iface.exitting := True;
+		end;
+	{ FIXME: add support for other buttons }
+end;
 
 procedure iface_step(var iface: ABInterface);
 var
@@ -336,11 +387,13 @@ begin
 		{ Redraw the whole screen }
 		iface_redraw(iface);
 	end
+	else if iface.view.needs_redraw then
+		iface_redraw_viewport(iface)	
 	else
-	begin
 		{ Perform normal update }
 		iface_update(iface);
-	end;
+
+	read_input(iface);
 end;
 
 begin

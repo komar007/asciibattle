@@ -29,8 +29,8 @@ begin
 		iface.panelbr := IntToStr(iface.view.width) + ', ' + IntToStr(iface.view.height);
 		gc_step(gc, 0.033);
 		iface_step(iface);
-		if keypressed then
-			break;
+		if iface.exitting then
+			halt;
 		delay(33);
 		gc_shoot(gc, PlayerOne, -0.78, 10);
 	end;
