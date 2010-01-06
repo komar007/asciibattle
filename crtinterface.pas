@@ -240,8 +240,8 @@ end;
 { Prints a char to the screen }
 procedure putchar(c: CharOnScreen);
 begin
-	//TextBackground(c.colors >> 4);
-	//TextColor(c.colors and $0f);
+	TextBackground(c.colors >> 4);
+	TextColor(c.colors and $0f);
 	write(c.ch);
 end;
 
@@ -270,6 +270,7 @@ begin
 	update_panel(iface, Top, iface.paneltl, iface.paneltc, iface.paneltr);
 	update_panel(iface, Bottom, iface.panelbl, iface.panelbc, iface.panelbr);
 	iface_redraw_viewport(iface);
+	GotoXY(1, 1);
 end;
 
 procedure viewport_update(var iface: ABInterface);
@@ -278,7 +279,6 @@ var
 	c: CharOnScreen;
 	pos_viewport: IntVector;
 begin
-	GotoXY(1,1);
 	cur := iface.gc^.pc^.animlist.head;
 	while cur <> nil do
 	begin
@@ -291,14 +291,13 @@ begin
 			if c <> iface.view.screen[pos_viewport.x, pos_viewport.y] then
 			begin
 				GotoXY(pos_viewport.x + 1, pos_viewport.y + 2);
-				if WhereX = 3 then
-					halt;
 				iface.view.screen[pos_viewport.x, pos_viewport.y] := c;
 				putchar(c);
 			end;
 		end;
 		cur := cur^.next;
 	end;
+	GotoXY(1, 1);
 end;
 
 procedure iface_update(var iface: ABInterface);

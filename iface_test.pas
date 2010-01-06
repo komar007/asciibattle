@@ -1,5 +1,5 @@
 program asciibattle;
-uses crt, CrtInterface, Game, Physics, BattleField, Geometry, SysUtils;
+uses CrtInterface, crt, Game, Physics, BattleField, Geometry, SysUtils;
 
 var
 	iface: ABInterface;
