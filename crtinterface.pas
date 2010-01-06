@@ -6,14 +6,21 @@ uses Game, Geometry, Lists, Crt;
 type
 	WhichPanel = (Top, Bottom);
 
+	{ 2-byte interpretation of a single character on screen with
+	  a color and bgcolor }
 	CharOnScreen = record
+		{ high 4 bits: background, low 4 bits: foreground }
 		colors: byte;
 		ch: char;
 	end;
 
 	ViewPort = record
-		anchor: IntVector;
+		{ Where in the battlefield the upper left-hand
+		  corner of the viewport is}
+		origin: IntVector;
 		width, height: integer;
+		{ Screen buffer to make sure only necessary updates are made
+		  and assure the minimal number of IO operations }
 		screen: array of array of CharOnScreen;
 	end;
 
@@ -43,6 +50,7 @@ begin
 	eq := (a.colors = b.colors) and (a.ch = b.ch);
 end;
 
+{ Chech the terminal dimensions }
 procedure ScreenSize(var x, y: integer);
 var
 {$ifdef LINUX}
@@ -61,7 +69,7 @@ end;
 
 procedure new_viewport(var view: ViewPort; x, y: integer);
 begin
-	view.anchor := iv(x, y);
+	view.origin := iv(x, y);
 	view.height := 0;
 	view.width := 0;
 end;
@@ -74,20 +82,24 @@ begin
 	view.height := h;
 end;
 
+{ Checks if a point can be rendered within a viewport }
 function point_in_viewport(var view: ViewPort; p: IntVector) : boolean;
 begin
 	point_in_viewport := (p.x >= 0) and (p.x < view.width) and
 		(p.y >= 0) and (p.y < view.height);
 end;
 
+{ Finds the position of a point in the battlefield basing on
+  its position in the viewport }
 function viewport_to_field_position(var view: ViewPort; p: IntVector) : IntVector;
 begin
-	viewport_to_field_position := p + view.anchor;
+	viewport_to_field_position := p + view.origin;
 end;
 
+{ Checks where to render a field whose position is (x, y) }
 function field_to_viewport_position(var view: ViewPort; p: IntVector) : IntVector;
 begin
-	field_to_viewport_position := p - view.anchor;
+	field_to_viewport_position := p - view.origin;
 end;
 
 procedure new_abinterface(var iface: ABInterface; gc: pGameController);
@@ -245,7 +257,7 @@ begin
 	write(c.ch);
 end;
 
-{ Does a full redraw of the viewport part of string }
+{ Does a full redraw of the viewport part of screen }
 procedure iface_redraw_viewport(var iface: ABInterface);
 var
 	c: CharOnScreen;
