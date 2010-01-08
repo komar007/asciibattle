@@ -6,6 +6,8 @@ uses Game, Geometry, Lists, Crt;
 type
 	WhichPanel = (Top, Bottom);
 
+	WhichPlace = (Left, Center, Right);
+
 	{ 2-byte interpretation of a single character on screen with
 	  a color and bgcolor }
 	CharOnScreen = record
@@ -29,14 +31,15 @@ type
 		width, height: integer;
 		view: ViewPort;
 		gc: pGameController;
-		paneltl, paneltc, paneltr, panelbl, panelbc, panelbr: string;
+		paneltl, paneltc, paneltr, panelbl, panelbc, panelbr: ansistring;
 		exitting: boolean;
+		tpanel_needs_update, bpanel_needs_update: boolean;
 	end;
 
 procedure new_abinterface(var iface: ABInterface; gc: pGameController);
-procedure update_panel(var iface: ABInterface; w: WhichPanel; left, center, right: string);
 procedure iface_redraw(var iface: ABInterface);
 procedure iface_step(var iface: ABInterface);
+procedure write_panel(var iface: ABInterface; pan: WhichPanel; place: WhichPlace; s: ansistring);
 
 
 implementation
@@ -49,10 +52,10 @@ uses StaticConfig,
 
 const
 	{ Special keycodes }
-	Left = chr(75);
-	Right = chr(77);
-	Up = chr(72);
-	Down = chr(80);
+	ALeft = chr(75);
+	ARight = chr(77);
+	AUp = chr(72);
+	ADown = chr(80);
 	{ Normal keycodes }
 	Enter = chr(13);
 	Escape = chr(27);
@@ -64,8 +67,8 @@ end;
 
 { Chech the terminal dimensions }
 procedure ScreenSize(var x, y: integer);
-var
 {$ifdef LINUX}
+var
 	tw: TWinSize;
 begin
 	fpioctl(stdinputhandle, TIOCGWINSZ, @tw);
@@ -128,9 +131,11 @@ begin
 	iface.height := 0;
 	iface.gc := gc;
 	iface.exitting := False;
+	iface.tpanel_needs_update := True;
+	iface.bpanel_needs_update := True;
 end;
 
-function template_width(t: string) : integer;
+function template_width(t: ansistring) : integer;
 var
 	len: integer;
 	i: integer;
@@ -155,10 +160,10 @@ begin
 	end;
 end;
 
-procedure write_template(t: string; char_limit: integer);
+procedure write_template(t: ansistring; char_limit: integer);
 var
 	len: integer;
-	s: string;
+	s: ansistring;
 	i: integer;
 begin
 	len := length(t);
@@ -194,19 +199,32 @@ begin
 	TextColor(White);
 end;
 
-procedure update_panel(var iface: ABInterface; w: WhichPanel; left, center, right: string);
+procedure update_panel(var iface: ABInterface; w: WhichPanel);
 var
 	i: integer;
 	pos_y: integer;
 	old_x, old_y: integer;
 	center_start, right_start: integer;
+	left, center, right: ^ansistring;
 begin
 	old_x := WhereX;
 	old_y := WhereY;
 	if w = Top then
-		pos_y := 1
+	begin
+		pos_y := 1;
+		left := @iface.paneltl;
+		center := @iface.paneltc;
+		right := @iface.paneltr;
+		iface.tpanel_needs_update := False;
+	end
 	else
+	begin
 		pos_y := iface.height;
+		left := @iface.panelbl;
+		center := @iface.panelbc;
+		right := @iface.panelbr;
+		iface.bpanel_needs_update := False;
+	end;
 	GotoXY(1, pos_y);
 	TextBackground(White);
 	TextColor(Black);
@@ -215,16 +233,38 @@ begin
 		write(' ');
 
 	GotoXY(1, pos_y);
-	write_template(left, iface.width);
-	center_start := max(1, (iface.width - template_width(center)) div 2 + 1);
+	write_template(left^, iface.width);
+	center_start := max(1, (iface.width - template_width(center^)) div 2 + 1);
 	GotoXY(center_start, pos_y);
-	write_template(center, iface.width - center_start + 1);
-	right_start := max(1, iface.width - template_width(right) + 1);
+	write_template(center^, iface.width - center_start + 1);
+	right_start := max(1, iface.width - template_width(right^) + 1);
 	GotoXY(right_start, pos_y);
-	write_template(right, iface.width - right_start + 1);
+	write_template(right^, iface.width - right_start + 1);
 
 	revert_standard_colors;
 	GotoXY(old_x, old_y);
+end;
+
+procedure write_panel(var iface: ABInterface; pan: WhichPanel; place: WhichPlace; s: ansistring);
+begin
+	if pan = Top then
+	begin
+		iface.tpanel_needs_update := True;
+		case place of
+			Left: iface.paneltl := s;
+			Center: iface.paneltc := s;
+			Right: iface.paneltr := s;
+		end;
+	end
+	else
+	begin
+		iface.bpanel_needs_update := True;
+		case place of
+			Left: iface.panelbl := s;
+			Center: iface.panelbc := s;
+			Right: iface.panelbr := s;
+		end;
+	end;
 end;
 
 { Returns what char should be at position (x, y) relative to the origin of viewport }
@@ -300,8 +340,8 @@ procedure iface_redraw(var iface: ABInterface);
 begin
 	revert_standard_colors;
 	{ Update the panels }
-	update_panel(iface, Top, iface.paneltl, iface.paneltc, iface.paneltr);
-	update_panel(iface, Bottom, iface.panelbl, iface.panelbc, iface.panelbr);
+	update_panel(iface, Top);
+	update_panel(iface, Bottom);
 	iface_redraw_viewport(iface);
 	GotoXY(1, 1);
 end;
@@ -336,9 +376,10 @@ end;
 procedure iface_update(var iface: ABInterface);
 begin
 	revert_standard_colors;
-	{ FIXME: Update panels only if necessary }
-	update_panel(iface, Top, iface.paneltl, iface.paneltc, iface.paneltr);
-	update_panel(iface, Bottom, iface.panelbl, iface.panelbc, iface.panelbr);
+	if iface.tpanel_needs_update then
+		update_panel(iface, Top);
+	if iface.bpanel_needs_update then
+		update_panel(iface, Bottom);
 	viewport_update(iface);
 end;
 
@@ -355,20 +396,24 @@ begin
 		c := ReadKey;
 	end;
 	if prev = chr(0) then
+		{ Temporary. FIXME: substitute with aiming }
 		case c of
-		Left:
+		ALeft:
 			viewport_move(iface.view, iv(-1, 0));
-		Right:
+		ARight:
 			viewport_move(iface.view, iv(1, 0));
-		Up:
+		AUp:
 			viewport_move(iface.view, iv(0, -1));
-		Down:
+		ADown:
 			viewport_move(iface.view, iv(0, 1));
 		end
 	else
 		case c of
-		Escape:
-			iface.exitting := True;
+			Escape: iface.exitting := True;
+			'w': viewport_move(iface.view, iv(0, -5));
+			'a': viewport_move(iface.view, iv(-5, 0));
+			's': viewport_move(iface.view, iv(0, 5));
+			'd': viewport_move(iface.view, iv(5, 0));
 		end;
 	{ FIXME: add support for other buttons }
 end;

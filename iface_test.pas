@@ -25,8 +25,9 @@ begin
 	writeln('Initialized');
 	while true do
 	begin
-		iface.panelbl := IntToStr(gc.pc^.rockets.size);
-		iface.panelbr := IntToStr(iface.view.width) + ', ' + IntToStr(iface.view.height);
+		{ FIXME: use write_panel }
+		write_panel(iface, Bottom, Left, IntToStr(gc.pc^.rockets.size));
+		write_panel(iface, Bottom, Right, IntToStr(iface.view.width) + ', ' + IntToStr(iface.view.height));
 		gc_step(gc, 0.033);
 		iface_step(iface);
 		if iface.exitting then
