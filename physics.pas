@@ -21,6 +21,7 @@ type
 procedure new_pc(var p: PhysicsController; bf: pBField);
 procedure pc_step(var p: PhysicsController; delta: double);
 procedure pc_add_rocket(var p: PhysicsController; r: Rocket);
+function field_animated(var p: PhysicsController; x, y: integer) : boolean;
 
 
 implementation

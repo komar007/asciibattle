@@ -58,7 +58,7 @@ begin
 		v(speed * cos(angle), speed * sin(angle)),  { initial velocity }
 		v(0, 9.81),                                 { gravity }
 		2,                                          { explosion radius }
-		90                                          { explosion force }
+		50                                          { explosion force }
 	);
 	pc_add_rocket(g.pc^, r);
 end;

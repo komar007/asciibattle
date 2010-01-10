@@ -1,11 +1,30 @@
 unit CrtInterface;
 
+{
+h = ScreenHeight
+w = ScreenWidth
+
++--------------------------+
+|(1, 1)  Top  panel        +
++--------------------------+
+|(1, 2)                    |
+|         @                |
+|                    @     |
+|         Viewport         |
+|                   #@##   |
+|  #$#$           @@#@$@$  |
+|#$$##$          @   @#@$  |
++--------------------------+
+|(1, h) Bottom panel       |
++--------------------------+
+
+}
+
 interface
-uses Game, Types, Geometry, Lists, Crt;
+uses Game, Physics, Types, Geometry, Lists, Crt;
 
 type
 	WhichPanel = (Top, Bottom);
-
 	WhichPlace = (Left, Center, Right);
 
 	{ 2-byte interpretation of a single character on screen with
@@ -32,13 +51,17 @@ type
 		view: ViewPort;
 		gc: pGameController;
 		paneltl, paneltc, paneltr, panelbl, panelbc, panelbr: ansistring;
-		exitting: boolean;
+		exitting, shooting: boolean;
 		tpanel_needs_update, bpanel_needs_update: boolean;
+		sight_angle: double;
+		sight_center: IntVector;
 	end;
 
 procedure new_abinterface(var iface: ABInterface; gc: pGameController);
-procedure iface_redraw(var iface: ABInterface);
 procedure iface_step(var iface: ABInterface);
+procedure iface_set_sight(var iface: ABInterface; p: IntVector; angle: double);
+function iface_get_sight(var iface: ABInterface) : double;
+{ Temporary }
 procedure write_panel(var iface: ABInterface; pan: WhichPanel; place: WhichPlace; s: ansistring);
 
 
@@ -59,6 +82,10 @@ const
 	{ Normal keycodes }
 	Enter = chr(13);
 	Escape = chr(27);
+	{ Colors }
+	BurningColors: array[0..5] of integer = (4, 5, 6, 12, 13, 14);
+	{ Other }
+	sight_len = 3;
 
 Operator =(a, b: CharOnScreen) eq : boolean;
 begin
@@ -81,7 +108,6 @@ begin
 {$endif}
 end;
 
-
 procedure new_viewport(var view: ViewPort; x, y: integer);
 begin
 	view.origin := iv(x, y);
@@ -90,6 +116,7 @@ begin
 	view.needs_redraw := True;
 end;
 
+{ Changes the size of viewport and resizes the buffer array, if necessary }
 procedure resize_viewport(var view: ViewPort; w, h: integer);
 begin
 	if (w > view.width) or (h > view.height) then
@@ -99,9 +126,9 @@ begin
 end;
 
 { Checks if a point can be rendered within a viewport }
-function point_in_viewport(var view: ViewPort; p: IntVector) : boolean;
+function field_in_viewport(var view: ViewPort; p: IntVector) : boolean;
 begin
-	point_in_viewport := (p.x >= 0) and (p.x < view.width) and
+	field_in_viewport := (p.x >= 0) and (p.x < view.width) and
 		(p.y >= 0) and (p.y < view.height);
 end;
 
@@ -131,8 +158,11 @@ begin
 	iface.height := 0;
 	iface.gc := gc;
 	iface.exitting := False;
+	iface.shooting := False;
 	iface.tpanel_needs_update := True;
 	iface.bpanel_needs_update := True;
+	iface.sight_angle := -1.57;
+	iface.sight_center := iv(0, 0);
 end;
 
 function template_width(t: ansistring) : integer;
@@ -226,7 +256,7 @@ begin
 		iface.bpanel_needs_update := False;
 	end;
 	GotoXY(1, pos_y);
-	TextBackground(White);
+	TextBackground(LightGray);
 	TextColor(Black);
 	{ Fill the panel with white background }
 	for i := 1 to iface.width do
@@ -267,48 +297,6 @@ begin
 	end;
 end;
 
-{ Returns what char should be at position (x, y) relative to the origin of viewport }
-function render_field(var iface: ABInterface; x, y: integer) : CharOnScreen;
-var
-	field_pos: IntVector;
-begin
-	field_pos := viewport_to_field_position(iface.view, iv(x, y));
-	if (field_pos.x < 0) or (field_pos.x > iface.gc^.pc^.field^.width - 1) or
-		(field_pos.y < 0) or (field_pos.y > iface.gc^.pc^.field^.height - 1) then
-	begin
-		render_field.ch := ' ';
-		render_field.colors := (Black << 4) or White;
-		exit;
-	end;
-	
-	case trunc(iface.gc^.pc^.field^.arr[field_pos.x, field_pos.y].current_hp) of
-	0:
-		render_field.ch := CH[0];
-	1..10:
-		render_field.ch := CH[1];
-	11..20:
-		render_field.ch := CH[2];
-	21..30:
-		render_field.ch := CH[3];
-	31..40:
-		render_field.ch := CH[4];
-	41..50:
-		render_field.ch := CH[5];
-	51..60:
-		render_field.ch := CH[6];
-	61..70:
-		render_field.ch := CH[7];
-	71..80:
-		render_field.ch := CH[8];
-	81..90:
-		render_field.ch := CH[9];
-	91..100:
-		render_field.ch := CH[10];
-	end;
-
-	render_field.colors := (Black << 4) or Green;
-end;
-
 { Prints a char to the screen }
 procedure viewport_putchar(view: ViewPort; pos: IntVector; c: CharOnScreen; force: boolean);
 begin
@@ -322,9 +310,86 @@ begin
 	end;
 end;
 
+function sight_marker_pos(iface: ABInterface) : IntVector;
+begin
+	sight_marker_pos := iv(fc(iface.sight_center) +
+		v(cos(iface.sight_angle) * sight_len,
+		  sin(iface.sight_angle) * sight_len));
+end;
+
+{ Returns what char should be at position (x, y) relative to the origin of viewport }
+function render_field(var iface: ABInterface; p: IntVector) : CharOnScreen;
+var
+	field_pos: IntVector;
+	which: integer;
+	bg: shortint;
+begin
+	field_pos := viewport_to_field_position(iface.view, p);
+	if field_pos = sight_marker_pos(iface) then
+	begin
+		render_field.ch := '+';
+		render_field.colors := (Black << 4) or Blue;
+		exit;
+	end
+	else if (field_pos.x < 0) or (field_pos.x > iface.gc^.pc^.field^.width - 1) or
+		(field_pos.y < 0) or (field_pos.y > iface.gc^.pc^.field^.height - 1) then
+	begin
+		render_field.ch := ' ';
+		render_field.colors := (Black << 4) or White;
+		exit;
+	end;
+	bg := (Black << 4);
+	which := trunc(iface.gc^.pc^.field^.arr[field_pos.x, field_pos.y].current_hp);
+	render_field.ch := CH[which div 10];
+	if field_animated(iface.gc^.pc^, field_pos.x, field_pos.y) and
+		(iface.gc^.pc^.field^.arr[field_pos.x, field_pos.y].hp < 20) then
+		render_field.colors := bg or BurningColors[random(6)]
+	else
+	begin
+		if which < 9 then
+			render_field.colors := bg or DarkGray
+		else
+			render_field.colors := bg or White;
+	end;
+end;
+
+procedure update_sight(var iface: ABInterface; old_mark: IntVector);
+var
+	view_pos: IntVector;
+	c: CharOnScreen;
+begin
+	view_pos := field_to_viewport_position(iface.view, old_mark);
+	if field_in_viewport(iface.view, view_pos) then
+	begin
+		c := render_field(iface, view_pos);
+		viewport_putchar(iface.view, view_pos, c, False);
+	end;
+	view_pos := field_to_viewport_position(iface.view, sight_marker_pos(iface));
+	if field_in_viewport(iface.view, view_pos) then
+	begin
+		c := render_field(iface, view_pos);
+		viewport_putchar(iface.view, view_pos, c, False);
+	end;
+end;
+
+function iface_get_sight(var iface: ABInterface) : double;
+begin
+	iface_get_sight := iface.sight_angle;
+end;
+
+procedure iface_set_sight(var iface: ABInterface; p: IntVector; angle: double);
+var
+	old_mark: IntVector;
+begin
+	old_mark := sight_marker_pos(iface);
+	iface.sight_center := p;
+	iface.sight_angle := angle;
+	update_sight(iface, old_mark);
+end;
+
 function render_rocket(var iface: ABInterface; r: Rocket) : CharOnScreen;
 begin
-	render_rocket.colors := (Black << 4) or Red;
+	render_rocket.colors := (Black << 4) or LightRed;
 	render_rocket.ch := '@';
 end;
 
@@ -339,7 +404,7 @@ begin
 	while cur <> nil do
 	begin
 		pos := field_to_viewport_position(iface.view, iv(cur^.v.position));
-		if point_in_viewport(iface.view, pos) and not cur^.v.removed then
+		if field_in_viewport(iface.view, pos) and not cur^.v.removed then
 		begin
 			c := render_rocket(iface, cur^.v);
 			viewport_putchar(iface.view, pos, c, True);
@@ -358,7 +423,7 @@ begin
 	begin
 		for i := 0 to iface.view.width - 1 do
 		begin
-			c := render_field(iface, i, j);
+			c := render_field(iface, iv(i, j));
 			iface.view.screen[i, j] := c;
 			viewport_putchar(iface.view, iv(i, j), c, True);
 		end;
@@ -388,9 +453,9 @@ begin
 	begin
 		{ Find where the field is in the viewport }
 		pos_viewport := field_to_viewport_position(iface.view, cur^.v);
-		if point_in_viewport(iface.view, pos_viewport) then
+		if field_in_viewport(iface.view, pos_viewport) then
 		begin
-			c := render_field(iface, pos_viewport.x, pos_viewport.y);
+			c := render_field(iface, pos_viewport);
 			viewport_putchar(iface.view, pos_viewport, c, False);
 		end;
 		cur := cur^.next;
@@ -410,19 +475,18 @@ begin
 	begin
 		c := render_rocket(iface, cur^.v);
 		pos := field_to_viewport_position(iface.view, iv(cur^.v.position));
-		if point_in_viewport(iface.view, pos) and not cur^.v.removed then
+		if field_in_viewport(iface.view, pos) and not cur^.v.removed then
 			viewport_putchar(iface.view, pos, c, False);
 		pos := field_to_viewport_position(iface.view, iv(cur^.v.oldpos));
-		if point_in_viewport(iface.view, pos) then
+		if field_in_viewport(iface.view, pos) then
 		begin
-			under := render_field(iface, pos.x, pos.y);
+			under := render_field(iface, pos);
 			viewport_putchar(iface.view, pos, under, False);
 		end;
 		cur := cur^.next;
 	end;
 	GotoXY(1,1);
 end;
-
 
 procedure viewport_update(var iface: ABInterface);
 begin
@@ -440,6 +504,18 @@ begin
 	viewport_update(iface);
 end;
 
+procedure sight_move(var iface: ABInterface; angle: double);
+var
+	old_mark: IntVector;
+begin
+	old_mark:= sight_marker_pos(iface);
+	if iface.sight_center.x < iface.gc^.pc^.field^.width / 2 then
+		iface.sight_angle := iface.sight_angle - angle
+	else
+		iface.sight_angle := iface.sight_angle + angle;
+	update_sight(iface, old_mark);
+end;
+
 procedure read_input(var iface: ABInterface);
 var
 	c, prev: char;
@@ -453,19 +529,20 @@ begin
 		c := ReadKey;
 	end;
 	if prev = chr(0) then
-		{ Temporary. FIXME: substitute with aiming }
+		{ Temporary. FIXME: substitute with sighting }
 		case c of
 		ALeft:
 			viewport_move(iface.view, iv(-1, 0));
 		ARight:
 			viewport_move(iface.view, iv(1, 0));
 		AUp:
-			viewport_move(iface.view, iv(0, -1));
+			sight_move(iface, 0.1);
 		ADown:
-			viewport_move(iface.view, iv(0, 1));
+			sight_move(iface, -0.1);
 		end
 	else
 		case c of
+			Enter: iface.shooting := True;
 			Escape: iface.exitting := True;
 			'w': viewport_move(iface.view, iv(0, -5));
 			'a': viewport_move(iface.view, iv(-5, 0));

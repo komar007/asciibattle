@@ -18,21 +18,25 @@ begin
 	end;
 
 	new_gc(gc, level);
-	gc.player1.cannon := iv(10, 15);
+	gc.player1.cannon := iv(50, 15);
 	new_abinterface(iface, @gc);
+	iface_set_sight(iface, iv(50,15), 0);
 	iface.paneltr := '$4>$0Player 2$4<';
 	iface.paneltl := ' Player 1';
 	writeln('Initialized');
 	while true do
 	begin
-		{ FIXME: use write_panel }
 		write_panel(iface, Bottom, Left, IntToStr(gc.pc^.rockets.size));
 		write_panel(iface, Bottom, Right, IntToStr(iface.view.width) + ', ' + IntToStr(iface.view.height));
 		gc_step(gc, 0.033);
 		iface_step(iface);
 		if iface.exitting then
 			halt;
+		if iface.shooting then
+		begin
+			gc_shoot(gc, PlayerOne, iface_get_sight(iface), 10);
+			iface.shooting := False;
+		end;
 		delay(33);
-		gc_shoot(gc, PlayerOne, -0.78, 10);
 	end;
 end.
