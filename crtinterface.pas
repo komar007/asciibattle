@@ -54,6 +54,7 @@ type
 		exitting, shooting: boolean;
 		tpanel_needs_update, bpanel_needs_update: boolean;
 		sight_angle: double;
+		{ The place from which we are aiming }
 		sight_center: IntVector;
 	end;
 
@@ -84,29 +85,24 @@ const
 	Escape = chr(27);
 	{ Colors }
 	BurningColors: array[0..5] of integer = (4, 5, 6, 12, 13, 14);
-	{ Other }
-	sight_len = 3;
 
 Operator =(a, b: CharOnScreen) eq : boolean;
 begin
 	eq := (a.colors = b.colors) and (a.ch = b.ch);
 end;
 
-{ Chech the terminal dimensions }
-procedure ScreenSize(var x, y: integer);
-{$ifdef LINUX}
-var
-	tw: TWinSize;
-begin
-	fpioctl(stdinputhandle, TIOCGWINSZ, @tw);
-	x := tw.ws_col;
-	y := tw.ws_row;
-{$else}
-begin
-	x := ScreenWidth;
-	y := ScreenHeight;
-{$endif}
-end;
+{ Forward declarations }
+procedure viewport_update_fields(var iface: ABInterface); forward;
+procedure viewport_update_rockets(var iface: ABInterface); forward;
+function sight_marker_pos(iface: ABInterface) : IntVector; forward;
+procedure update_panel(var iface: ABInterface; w: WhichPanel); forward;
+procedure read_input(var iface: ABInterface); forward;
+function render_field(var iface: ABInterface; p: IntVector) : CharOnScreen; forward;
+function render_rocket(var iface: ABInterface; r: Rocket) : CharOnScreen; forward;
+procedure revert_standard_colors; forward;
+procedure ScreenSize(var x, y: integer); forward;
+
+{ ************************ Viewport Section ************************ }
 
 procedure new_viewport(var view: ViewPort; x, y: integer);
 begin
@@ -151,6 +147,118 @@ begin
 	view.needs_redraw := True;
 end;
 
+{ Prints a char to the screen }
+procedure viewport_putchar(view: ViewPort; pos: IntVector; c: CharOnScreen; force: boolean);
+begin
+	if field_in_viewport(view, pos) and ((view.screen[pos.x, pos.y] <> c) or force) then
+	begin
+		view.screen[pos.x, pos.y] := c;
+		GotoXY(pos.x + 1, pos.y + 2);
+		TextBackground(c.colors >> 4);
+		TextColor(c.colors and $0f);
+		write(c.ch);
+	end;
+end;
+
+{ Does a full redraw of the viewport part of screen }
+procedure viewport_redraw(var iface: ABInterface);
+var
+	c: CharOnScreen;
+	i, j: integer;
+begin
+	for j := 0 to iface.view.height - 1 do
+	begin
+		for i := 0 to iface.view.width - 1 do
+		begin
+			c := render_field(iface, iv(i, j));
+			viewport_putchar(iface.view, iv(i, j), c, True);
+		end;
+	end;
+	iface.view.needs_redraw := False;
+	viewport_update_rockets(iface);
+end;
+
+procedure viewport_update(var iface: ABInterface);
+begin
+	viewport_update_fields(iface);
+	viewport_update_rockets(iface);
+end;
+
+{ Redraws the fields which are being animated }
+procedure viewport_update_fields(var iface: ABInterface);
+var
+	cur: pIntVectorNode;
+	c: CharOnScreen;
+	pos_viewport: IntVector;
+begin
+	cur := iface.gc^.pc^.animlist.head;
+	while cur <> nil do
+	begin
+		pos_viewport := field_to_viewport_position(iface.view, cur^.v);
+		c := render_field(iface, pos_viewport);
+		viewport_putchar(iface.view, pos_viewport, c, False);
+		cur := cur^.next;
+	end;
+	GotoXY(1, 1);
+end;
+
+{ Updates rockets' positions }
+procedure viewport_update_rockets(var iface: ABInterface);
+var
+	cur: pRocketNode;
+	c: CharOnScreen;
+	pos: IntVector;
+begin
+	cur := iface.gc^.pc^.rockets.head;
+	while cur <> nil do
+	begin
+		c := render_rocket(iface, cur^.v);
+		pos := field_to_viewport_position(iface.view, iv(cur^.v.position));
+		if not cur^.v.removed then
+			viewport_putchar(iface.view, pos, c, False);
+		pos := field_to_viewport_position(iface.view, iv(cur^.v.oldpos));
+		c := render_field(iface, pos);
+		viewport_putchar(iface.view, pos, c, False);
+		cur := cur^.next;
+	end;
+	GotoXY(1,1);
+end;
+
+procedure viewport_update_sight(var iface: ABInterface; old_mark: IntVector);
+var
+	view_pos: IntVector;
+	c: CharOnScreen;
+begin
+	view_pos := field_to_viewport_position(iface.view, old_mark);
+	c := render_field(iface, view_pos);
+	viewport_putchar(iface.view, view_pos, c, False);
+
+	view_pos := field_to_viewport_position(iface.view, sight_marker_pos(iface));
+	c := render_field(iface, view_pos);
+	viewport_putchar(iface.view, view_pos, c, False);
+end;
+
+procedure viewport_move_sight(var iface: ABInterface; angle: double);
+var
+	old_mark: IntVector;
+begin
+	old_mark:= sight_marker_pos(iface);
+	if iface.sight_center.x < iface.gc^.pc^.field^.width / 2 then
+		iface.sight_angle := iface.sight_angle - angle
+	else
+		iface.sight_angle := iface.sight_angle + angle;
+	viewport_update_sight(iface, old_mark);
+end;
+
+function sight_marker_pos(iface: ABInterface) : IntVector;
+begin
+	sight_marker_pos := iv(fc(iface.sight_center) +
+		v(cos(iface.sight_angle) * SIGHT_LEN,
+		  sin(iface.sight_angle) * SIGHT_LEN));
+end;
+
+{ ************************ Interface Section ************************ }
+
 procedure new_abinterface(var iface: ABInterface; gc: pGameController);
 begin
 	new_viewport(iface.view, 0, 0);
@@ -164,6 +272,66 @@ begin
 	iface.sight_angle := -1.57;
 	iface.sight_center := iv(0, 0);
 end;
+
+function iface_get_sight(var iface: ABInterface) : double;
+begin
+	iface_get_sight := iface.sight_angle;
+end;
+
+procedure iface_set_sight(var iface: ABInterface; p: IntVector; angle: double);
+var
+	old_mark: IntVector;
+begin
+	old_mark := sight_marker_pos(iface);
+	iface.sight_center := p;
+	iface.sight_angle := angle;
+	viewport_update_sight(iface, old_mark);
+end;
+
+procedure iface_redraw(var iface: ABInterface);
+begin
+	revert_standard_colors;
+	{ Update the panels }
+	update_panel(iface, Top);
+	update_panel(iface, Bottom);
+	viewport_redraw(iface);
+	GotoXY(1, 1);
+end;
+
+procedure iface_update(var iface: ABInterface);
+begin
+	revert_standard_colors;
+	if iface.tpanel_needs_update then
+		update_panel(iface, Top);
+	if iface.bpanel_needs_update then
+		update_panel(iface, Bottom);
+	viewport_update(iface);
+end;
+
+procedure iface_step(var iface: ABInterface);
+var
+	old_w, old_h: integer;
+begin
+	old_w := iface.width;
+	old_h := iface.height;
+	ScreenSize(iface.width, iface.height);
+	if (old_w <> iface.width) or (old_h <> iface.height) then
+	begin
+		{ Recalculate viewport dimensions }
+		resize_viewport(iface.view, iface.width, iface.height - 2);
+		{ Redraw the whole screen }
+		iface_redraw(iface);
+	end
+	else if iface.view.needs_redraw then
+		viewport_redraw(iface)	
+	else
+		{ Perform normal update }
+		iface_update(iface);
+
+	read_input(iface);
+end;
+
+{ ************************ Panel Section ************************ }
 
 function template_width(t: ansistring) : integer;
 var
@@ -221,12 +389,6 @@ begin
 				inc(i);
 			end;
 		end;
-end;
-
-procedure revert_standard_colors;
-begin
-	TextBackground(Black);
-	TextColor(White);
 end;
 
 procedure update_panel(var iface: ABInterface; w: WhichPanel);
@@ -297,25 +459,45 @@ begin
 	end;
 end;
 
-{ Prints a char to the screen }
-procedure viewport_putchar(view: ViewPort; pos: IntVector; c: CharOnScreen; force: boolean);
+{ ************************ Input Section ************************ }
+
+procedure read_input(var iface: ABInterface);
+var
+	c, prev: char;
 begin
-	if (view.screen[pos.x, pos.y] <> c) or force then
+	if not KeyPressed then
+		exit;
+	c := chr(255);
+	while KeyPressed do
 	begin
-		view.screen[pos.x, pos.y] := c;
-		GotoXY(pos.x + 1, pos.y + 2);
-		TextBackground(c.colors >> 4);
-		TextColor(c.colors and $0f);
-		write(c.ch);
+		prev := c;
+		c := ReadKey;
 	end;
+	if prev = chr(0) then
+		{ Temporary. FIXME: substitute with sighting }
+		case c of
+		ALeft:
+			viewport_move(iface.view, iv(-1, 0));
+		ARight:
+			viewport_move(iface.view, iv(1, 0));
+		AUp:
+			viewport_move_sight(iface, 0.1);
+		ADown:
+			viewport_move_sight(iface, -0.1);
+		end
+	else
+		case c of
+			Enter: iface.shooting := True;
+			Escape: iface.exitting := True;
+			'w': viewport_move(iface.view, iv(0, -5));
+			'a': viewport_move(iface.view, iv(-5, 0));
+			's': viewport_move(iface.view, iv(0, 5));
+			'd': viewport_move(iface.view, iv(5, 0));
+		end;
+	{ FIXME: add support for other buttons }
 end;
 
-function sight_marker_pos(iface: ABInterface) : IntVector;
-begin
-	sight_marker_pos := iv(fc(iface.sight_center) +
-		v(cos(iface.sight_angle) * sight_len,
-		  sin(iface.sight_angle) * sight_len));
-end;
+{ ************************ Character look Section ************************ }
 
 { Returns what char should be at position (x, y) relative to the origin of viewport }
 function render_field(var iface: ABInterface; p: IntVector) : CharOnScreen;
@@ -353,227 +535,36 @@ begin
 	end;
 end;
 
-procedure update_sight(var iface: ABInterface; old_mark: IntVector);
-var
-	view_pos: IntVector;
-	c: CharOnScreen;
-begin
-	view_pos := field_to_viewport_position(iface.view, old_mark);
-	if field_in_viewport(iface.view, view_pos) then
-	begin
-		c := render_field(iface, view_pos);
-		viewport_putchar(iface.view, view_pos, c, False);
-	end;
-	view_pos := field_to_viewport_position(iface.view, sight_marker_pos(iface));
-	if field_in_viewport(iface.view, view_pos) then
-	begin
-		c := render_field(iface, view_pos);
-		viewport_putchar(iface.view, view_pos, c, False);
-	end;
-end;
-
-function iface_get_sight(var iface: ABInterface) : double;
-begin
-	iface_get_sight := iface.sight_angle;
-end;
-
-procedure iface_set_sight(var iface: ABInterface; p: IntVector; angle: double);
-var
-	old_mark: IntVector;
-begin
-	old_mark := sight_marker_pos(iface);
-	iface.sight_center := p;
-	iface.sight_angle := angle;
-	update_sight(iface, old_mark);
-end;
-
 function render_rocket(var iface: ABInterface; r: Rocket) : CharOnScreen;
 begin
 	render_rocket.colors := (Black << 4) or LightRed;
 	render_rocket.ch := '@';
 end;
 
-{ Draws all the rockets on the screen }
-procedure rockets_draw(var iface: ABInterface);
+{ ************************ Auxilliary Section ************************ }
+
+procedure revert_standard_colors;
+begin
+	TextBackground(Black);
+	TextColor(White);
+end;
+
+{ Check the terminal dimensions }
+procedure ScreenSize(var x, y: integer);
+{$ifdef LINUX}
 var
-	cur: pRocketNode;
-	c: CharOnScreen;
-	pos: IntVector;
+	tw: TWinSize;
 begin
-	cur := iface.gc^.pc^.rockets.head;
-	while cur <> nil do
-	begin
-		pos := field_to_viewport_position(iface.view, iv(cur^.v.position));
-		if field_in_viewport(iface.view, pos) and not cur^.v.removed then
-		begin
-			c := render_rocket(iface, cur^.v);
-			viewport_putchar(iface.view, pos, c, True);
-		end;
-		cur := cur^.next;
-	end;
+	fpioctl(stdinputhandle, TIOCGWINSZ, @tw);
+	x := tw.ws_col;
+	y := tw.ws_row;
+{$else}
+begin
+	x := ScreenWidth;
+	y := ScreenHeight;
+{$endif}
 end;
 
-{ Does a full redraw of the viewport part of screen }
-procedure iface_redraw_viewport(var iface: ABInterface);
-var
-	c: CharOnScreen;
-	i, j: integer;
-begin
-	for j := 0 to iface.view.height - 1 do
-	begin
-		for i := 0 to iface.view.width - 1 do
-		begin
-			c := render_field(iface, iv(i, j));
-			iface.view.screen[i, j] := c;
-			viewport_putchar(iface.view, iv(i, j), c, True);
-		end;
-	end;
-	iface.view.needs_redraw := False;
-	rockets_draw(iface);
-end;
-
-procedure iface_redraw(var iface: ABInterface);
-begin
-	revert_standard_colors;
-	{ Update the panels }
-	update_panel(iface, Top);
-	update_panel(iface, Bottom);
-	iface_redraw_viewport(iface);
-	GotoXY(1, 1);
-end;
-
-procedure viewport_update_field(var iface: ABInterface);
-var
-	cur: pIntVectorNode;
-	c: CharOnScreen;
-	pos_viewport: IntVector;
-begin
-	cur := iface.gc^.pc^.animlist.head;
-	while cur <> nil do
-	begin
-		{ Find where the field is in the viewport }
-		pos_viewport := field_to_viewport_position(iface.view, cur^.v);
-		if field_in_viewport(iface.view, pos_viewport) then
-		begin
-			c := render_field(iface, pos_viewport);
-			viewport_putchar(iface.view, pos_viewport, c, False);
-		end;
-		cur := cur^.next;
-	end;
-	GotoXY(1, 1);
-end;
-
-procedure viewport_update_rockets(iface: ABInterface);
-var
-	cur: pRocketNode;
-	c: CharOnScreen;
-	under: CharOnScreen;
-	pos: IntVector;
-begin
-	cur := iface.gc^.pc^.rockets.head;
-	while cur <> nil do
-	begin
-		c := render_rocket(iface, cur^.v);
-		pos := field_to_viewport_position(iface.view, iv(cur^.v.position));
-		if field_in_viewport(iface.view, pos) and not cur^.v.removed then
-			viewport_putchar(iface.view, pos, c, False);
-		pos := field_to_viewport_position(iface.view, iv(cur^.v.oldpos));
-		if field_in_viewport(iface.view, pos) then
-		begin
-			under := render_field(iface, pos);
-			viewport_putchar(iface.view, pos, under, False);
-		end;
-		cur := cur^.next;
-	end;
-	GotoXY(1,1);
-end;
-
-procedure viewport_update(var iface: ABInterface);
-begin
-	viewport_update_field(iface);
-	viewport_update_rockets(iface);
-end;
-
-procedure iface_update(var iface: ABInterface);
-begin
-	revert_standard_colors;
-	if iface.tpanel_needs_update then
-		update_panel(iface, Top);
-	if iface.bpanel_needs_update then
-		update_panel(iface, Bottom);
-	viewport_update(iface);
-end;
-
-procedure sight_move(var iface: ABInterface; angle: double);
-var
-	old_mark: IntVector;
-begin
-	old_mark:= sight_marker_pos(iface);
-	if iface.sight_center.x < iface.gc^.pc^.field^.width / 2 then
-		iface.sight_angle := iface.sight_angle - angle
-	else
-		iface.sight_angle := iface.sight_angle + angle;
-	update_sight(iface, old_mark);
-end;
-
-procedure read_input(var iface: ABInterface);
-var
-	c, prev: char;
-begin
-	if not KeyPressed then
-		exit;
-	c := chr(255);
-	while KeyPressed do
-	begin
-		prev := c;
-		c := ReadKey;
-	end;
-	if prev = chr(0) then
-		{ Temporary. FIXME: substitute with sighting }
-		case c of
-		ALeft:
-			viewport_move(iface.view, iv(-1, 0));
-		ARight:
-			viewport_move(iface.view, iv(1, 0));
-		AUp:
-			sight_move(iface, 0.1);
-		ADown:
-			sight_move(iface, -0.1);
-		end
-	else
-		case c of
-			Enter: iface.shooting := True;
-			Escape: iface.exitting := True;
-			'w': viewport_move(iface.view, iv(0, -5));
-			'a': viewport_move(iface.view, iv(-5, 0));
-			's': viewport_move(iface.view, iv(0, 5));
-			'd': viewport_move(iface.view, iv(5, 0));
-		end;
-	{ FIXME: add support for other buttons }
-end;
-
-procedure iface_step(var iface: ABInterface);
-var
-	old_w, old_h: integer;
-begin
-	old_w := iface.width;
-	old_h := iface.height;
-	ScreenSize(iface.width, iface.height);
-	if (old_w <> iface.width) or (old_h <> iface.height) then
-	begin
-		{ Recalculate viewport dimensions }
-		resize_viewport(iface.view, iface.width, iface.height - 2);
-		{ Redraw the whole screen }
-		iface_redraw(iface);
-	end
-	else if iface.view.needs_redraw then
-		iface_redraw_viewport(iface)	
-	else
-		{ Perform normal update }
-		iface_update(iface);
-
-	read_input(iface);
-end;
 
 begin
 end.
