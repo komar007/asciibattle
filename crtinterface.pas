@@ -1,7 +1,7 @@
 unit CrtInterface;
 
 interface
-uses Game, Geometry, Lists, Crt;
+uses Game, Types, Geometry, Lists, Crt;
 
 type
 	WhichPanel = (Top, Bottom);
@@ -268,7 +268,7 @@ begin
 end;
 
 { Returns what char should be at position (x, y) relative to the origin of viewport }
-function render_char(var iface: ABInterface; x, y: integer) : CharOnScreen;
+function render_field(var iface: ABInterface; x, y: integer) : CharOnScreen;
 var
 	field_pos: IntVector;
 begin
@@ -276,45 +276,76 @@ begin
 	if (field_pos.x < 0) or (field_pos.x > iface.gc^.pc^.field^.width - 1) or
 		(field_pos.y < 0) or (field_pos.y > iface.gc^.pc^.field^.height - 1) then
 	begin
-		render_char.ch := ' ';
-		render_char.colors := (Black << 4) or White;
+		render_field.ch := ' ';
+		render_field.colors := (Black << 4) or White;
 		exit;
 	end;
 	
 	case trunc(iface.gc^.pc^.field^.arr[field_pos.x, field_pos.y].current_hp) of
 	0:
-		render_char.ch := CH[0];
+		render_field.ch := CH[0];
 	1..10:
-		render_char.ch := CH[1];
+		render_field.ch := CH[1];
 	11..20:
-		render_char.ch := CH[2];
+		render_field.ch := CH[2];
 	21..30:
-		render_char.ch := CH[3];
+		render_field.ch := CH[3];
 	31..40:
-		render_char.ch := CH[4];
+		render_field.ch := CH[4];
 	41..50:
-		render_char.ch := CH[5];
+		render_field.ch := CH[5];
 	51..60:
-		render_char.ch := CH[6];
+		render_field.ch := CH[6];
 	61..70:
-		render_char.ch := CH[7];
+		render_field.ch := CH[7];
 	71..80:
-		render_char.ch := CH[8];
+		render_field.ch := CH[8];
 	81..90:
-		render_char.ch := CH[9];
+		render_field.ch := CH[9];
 	91..100:
-		render_char.ch := CH[10];
+		render_field.ch := CH[10];
 	end;
 
-	render_char.colors := (Black << 4) or Green;
+	render_field.colors := (Black << 4) or Green;
 end;
 
 { Prints a char to the screen }
-procedure putchar(c: CharOnScreen);
+procedure viewport_putchar(view: ViewPort; pos: IntVector; c: CharOnScreen; force: boolean);
 begin
-	TextBackground(c.colors >> 4);
-	TextColor(c.colors and $0f);
-	write(c.ch);
+	if (view.screen[pos.x, pos.y] <> c) or force then
+	begin
+		view.screen[pos.x, pos.y] := c;
+		GotoXY(pos.x + 1, pos.y + 2);
+		TextBackground(c.colors >> 4);
+		TextColor(c.colors and $0f);
+		write(c.ch);
+	end;
+end;
+
+function render_rocket(var iface: ABInterface; r: Rocket) : CharOnScreen;
+begin
+	render_rocket.colors := (Black << 4) or Red;
+	render_rocket.ch := '@';
+end;
+
+{ Draws all the rockets on the screen }
+procedure rockets_draw(var iface: ABInterface);
+var
+	cur: pRocketNode;
+	c: CharOnScreen;
+	pos: IntVector;
+begin
+	cur := iface.gc^.pc^.rockets.head;
+	while cur <> nil do
+	begin
+		pos := field_to_viewport_position(iface.view, iv(cur^.v.position));
+		if point_in_viewport(iface.view, pos) and not cur^.v.removed then
+		begin
+			c := render_rocket(iface, cur^.v);
+			viewport_putchar(iface.view, pos, c, True);
+		end;
+		cur := cur^.next;
+	end;
 end;
 
 { Does a full redraw of the viewport part of screen }
@@ -325,15 +356,15 @@ var
 begin
 	for j := 0 to iface.view.height - 1 do
 	begin
-		GotoXY(1, j + 2);
 		for i := 0 to iface.view.width - 1 do
 		begin
-			c := render_char(iface, i, j);
+			c := render_field(iface, i, j);
 			iface.view.screen[i, j] := c;
-			putchar(c);
+			viewport_putchar(iface.view, iv(i, j), c, True);
 		end;
 	end;
 	iface.view.needs_redraw := False;
+	rockets_draw(iface);
 end;
 
 procedure iface_redraw(var iface: ABInterface);
@@ -346,7 +377,7 @@ begin
 	GotoXY(1, 1);
 end;
 
-procedure viewport_update(var iface: ABInterface);
+procedure viewport_update_field(var iface: ABInterface);
 var
 	cur: pIntVectorNode;
 	c: CharOnScreen;
@@ -359,18 +390,44 @@ begin
 		pos_viewport := field_to_viewport_position(iface.view, cur^.v);
 		if point_in_viewport(iface.view, pos_viewport) then
 		begin
-			c := render_char(iface, pos_viewport.x, pos_viewport.y);
-			{ if the character needs to be updated... }
-			if c <> iface.view.screen[pos_viewport.x, pos_viewport.y] then
-			begin
-				GotoXY(pos_viewport.x + 1, pos_viewport.y + 2);
-				iface.view.screen[pos_viewport.x, pos_viewport.y] := c;
-				putchar(c);
-			end;
+			c := render_field(iface, pos_viewport.x, pos_viewport.y);
+			viewport_putchar(iface.view, pos_viewport, c, False);
 		end;
 		cur := cur^.next;
 	end;
 	GotoXY(1, 1);
+end;
+
+procedure viewport_update_rockets(iface: ABInterface);
+var
+	cur: pRocketNode;
+	c: CharOnScreen;
+	under: CharOnScreen;
+	pos: IntVector;
+begin
+	cur := iface.gc^.pc^.rockets.head;
+	while cur <> nil do
+	begin
+		c := render_rocket(iface, cur^.v);
+		pos := field_to_viewport_position(iface.view, iv(cur^.v.position));
+		if point_in_viewport(iface.view, pos) and not cur^.v.removed then
+			viewport_putchar(iface.view, pos, c, False);
+		pos := field_to_viewport_position(iface.view, iv(cur^.v.oldpos));
+		if point_in_viewport(iface.view, pos) then
+		begin
+			under := render_field(iface, pos.x, pos.y);
+			viewport_putchar(iface.view, pos, under, False);
+		end;
+		cur := cur^.next;
+	end;
+	GotoXY(1,1);
+end;
+
+
+procedure viewport_update(var iface: ABInterface);
+begin
+	viewport_update_field(iface);
+	viewport_update_rockets(iface);
 end;
 
 procedure iface_update(var iface: ABInterface);
