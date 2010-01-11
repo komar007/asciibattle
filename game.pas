@@ -10,6 +10,7 @@ type
 		base: IntVector;
 		cannon: IntVector;
 		max_force: double;
+		angle, force: double;
 	end;
 
 	GameController = record
