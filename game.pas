@@ -9,6 +9,7 @@ type
 	Player = record
 		base: IntVector;
 		cannon: IntVector;
+		max_force: double;
 	end;
 
 	GameController = record

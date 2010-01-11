@@ -19,8 +19,10 @@ begin
 
 	new_gc(gc, level);
 	gc.player1.cannon := iv(50, 15);
+	gc.player1.max_force := 30;
+	iface.shoot_max_force := 30;
 	new_abinterface(iface, @gc);
-	iface_set_sight(iface, iv(50,15), 0);
+	iface_set_sight(iface, iv(50,15), 3.14, 3);
 	iface.paneltr := '$4>$0Player 2$4<';
 	iface.paneltl := ' Player 1';
 	writeln('Initialized');
@@ -34,7 +36,7 @@ begin
 			halt;
 		if iface.shooting then
 		begin
-			gc_shoot(gc, PlayerOne, iface_get_sight(iface), 10);
+			gc_shoot(gc, PlayerOne, iface_get_sight(iface), iface.shoot_force);
 			iface.shooting := False;
 		end;
 		delay(33);

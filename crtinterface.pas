@@ -56,18 +56,20 @@ type
 		sight_angle: double;
 		{ The place from which we are aiming }
 		sight_center: IntVector;
+		shoot_force: double;
+		shoot_max_force: double;
 	end;
 
 procedure new_abinterface(var iface: ABInterface; gc: pGameController);
 procedure iface_step(var iface: ABInterface);
-procedure iface_set_sight(var iface: ABInterface; p: IntVector; angle: double);
+procedure iface_set_sight(var iface: ABInterface; p: IntVector; angle, force: double);
 function iface_get_sight(var iface: ABInterface) : double;
 { Temporary }
 procedure write_panel(var iface: ABInterface; pan: WhichPanel; place: WhichPlace; s: ansistring);
 
 
 implementation
-uses StaticConfig,
+uses StaticConfig, SysUtils,
 {$ifdef LINUX}
 	termio, BaseUnix,
 {$endif}
@@ -81,6 +83,7 @@ const
 	AUp = chr(72);
 	ADown = chr(80);
 	{ Normal keycodes }
+	Space = ' ';
 	Enter = chr(13);
 	Escape = chr(27);
 	{ Colors }
@@ -94,6 +97,7 @@ end;
 { Forward declarations }
 procedure viewport_update_fields(var iface: ABInterface); forward;
 procedure viewport_update_rockets(var iface: ABInterface); forward;
+procedure update_force_bar(var iface: ABInterface); forward;
 function sight_marker_pos(iface: ABInterface) : IntVector; forward;
 procedure update_panel(var iface: ABInterface; w: WhichPanel); forward;
 procedure read_input(var iface: ABInterface); forward;
@@ -238,15 +242,15 @@ begin
 	viewport_putchar(iface.view, view_pos, c, False);
 end;
 
-procedure viewport_move_sight(var iface: ABInterface; angle: double);
+procedure viewport_move_sight(var iface: ABInterface; delta: double);
 var
 	old_mark: IntVector;
 begin
 	old_mark:= sight_marker_pos(iface);
 	if iface.sight_center.x < iface.gc^.pc^.field^.width / 2 then
-		iface.sight_angle := iface.sight_angle - angle
+		iface.sight_angle := iface.sight_angle - delta
 	else
-		iface.sight_angle := iface.sight_angle + angle;
+		iface.sight_angle := iface.sight_angle + delta;
 	viewport_update_sight(iface, old_mark);
 end;
 
@@ -255,6 +259,29 @@ begin
 	sight_marker_pos := iv(fc(iface.sight_center) +
 		v(cos(iface.sight_angle) * SIGHT_LEN,
 		  sin(iface.sight_angle) * SIGHT_LEN));
+end;
+
+procedure viewport_change_force(var iface: ABInterface; delta: double);
+begin
+	iface.shoot_force := max(0, min(iface.shoot_max_force, iface.shoot_force + delta));
+	update_force_bar(iface);
+end;
+
+procedure update_force_bar(var iface: ABInterface);
+var
+	bar_len, bar_max_len: integer;
+	bar: ansistring;
+	i: integer;
+begin
+	bar_max_len := trunc(iface.width / 3);
+	bar_len := trunc(bar_max_len * iface.shoot_force / iface.shoot_max_force);
+	bar := '[';
+	for i := 1 to bar_len do
+		bar := bar + '-';
+	for i := bar_len + 1 to  bar_max_len do
+		bar := bar + ' ';
+	bar := bar + ']';
+	write_panel(iface, Bottom, Center, bar);
 end;
 
 { ************************ Interface Section ************************ }
@@ -271,6 +298,7 @@ begin
 	iface.bpanel_needs_update := True;
 	iface.sight_angle := -1.57;
 	iface.sight_center := iv(0, 0);
+	iface.shoot_force := 0;
 end;
 
 function iface_get_sight(var iface: ABInterface) : double;
@@ -278,20 +306,23 @@ begin
 	iface_get_sight := iface.sight_angle;
 end;
 
-procedure iface_set_sight(var iface: ABInterface; p: IntVector; angle: double);
+procedure iface_set_sight(var iface: ABInterface; p: IntVector; angle, force: double);
 var
 	old_mark: IntVector;
 begin
 	old_mark := sight_marker_pos(iface);
 	iface.sight_center := p;
 	iface.sight_angle := angle;
+	iface.shoot_force := force;
 	viewport_update_sight(iface, old_mark);
+	update_force_bar(iface);
 end;
 
 procedure iface_redraw(var iface: ABInterface);
 begin
 	revert_standard_colors;
 	{ Update the panels }
+	update_force_bar(iface);
 	update_panel(iface, Top);
 	update_panel(iface, Bottom);
 	viewport_redraw(iface);
@@ -327,7 +358,6 @@ begin
 	else
 		{ Perform normal update }
 		iface_update(iface);
-
 	read_input(iface);
 end;
 
@@ -464,30 +494,29 @@ end;
 procedure read_input(var iface: ABInterface);
 var
 	c, prev: char;
+	i: integer;
 begin
 	if not KeyPressed then
 		exit;
 	c := chr(255);
+	i := 0;
 	while KeyPressed do
 	begin
+		inc(i);
 		prev := c;
 		c := ReadKey;
 	end;
+	write_panel(iface, Top, Left, IntToStr(i));
 	if prev = chr(0) then
-		{ Temporary. FIXME: substitute with sighting }
 		case c of
-		ALeft:
-			viewport_move(iface.view, iv(-1, 0));
-		ARight:
-			viewport_move(iface.view, iv(1, 0));
-		AUp:
-			viewport_move_sight(iface, 0.1);
-		ADown:
-			viewport_move_sight(iface, -0.1);
+			AUp: viewport_move_sight(iface, 0.1);
+			ADown: viewport_move_sight(iface, -0.1);
+			ALeft: viewport_change_force(iface, -0.5);
+			ARight: viewport_change_force(iface, 0.5);
 		end
 	else
 		case c of
-			Enter: iface.shooting := True;
+			Space: iface.shooting := True;
 			Escape: iface.exitting := True;
 			'w': viewport_move(iface.view, iv(0, -5));
 			'a': viewport_move(iface.view, iv(-5, 0));
