@@ -240,6 +240,7 @@ begin
 	view_pos := field_to_viewport_position(iface.view, sight_marker_pos(iface));
 	c := render_field(iface, view_pos);
 	viewport_putchar(iface.view, view_pos, c, False);
+	GotoXY(1,1);
 end;
 
 procedure viewport_move_sight(var iface: ABInterface; delta: double);
@@ -273,11 +274,11 @@ var
 	bar: ansistring;
 	i: integer;
 begin
-	bar_max_len := trunc(iface.width / 3);
+	bar_max_len := trunc(iface.width / 4);
 	bar_len := trunc(bar_max_len * iface.shoot_force / iface.shoot_max_force);
-	bar := '[';
+	bar := 'Force: [';
 	for i := 1 to bar_len do
-		bar := bar + '-';
+		bar := bar + '=';
 	for i := bar_len + 1 to  bar_max_len do
 		bar := bar + ' ';
 	bar := bar + ']';
