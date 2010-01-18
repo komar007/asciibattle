@@ -1,9 +1,9 @@
 TYPES=Rocket IntVector
 
-all: iface_test
+all: asciibattle
 
-iface_test: iface_test.pas crtinterface.pas game.pas battlefield.pas physics.pas types.pas config.pas staticconfig.pas lists.pas geometry.pas
-	fpc -g -pg -Mobjfpc iface_test.pas
+asciibattle: asciibattle.pas crtinterface.pas game.pas battlefield.pas physics.pas types.pas config.pas staticconfig.pas lists.pas geometry.pas
+	fpc -g -pg -Mobjfpc asciibattle.pas
 
 lists.pas: list.pas.in listimpl.pas.in
 	echo "unit Lists;" > lists.pas

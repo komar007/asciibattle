@@ -6,6 +6,8 @@ uses Physics, Geometry, Types, Lists;
 type
 	WhichPlayer = (PlayerOne, PlayerTwo);
 
+	Side = (FortLeft, FortRight);
+
 	Player = record
 		base: IntVector;
 		cannon: IntVector;
@@ -19,6 +21,7 @@ type
 	GameController = record
 		pc: pPhysicsController;
 		player1, player2: Player;
+		current_player: pPlayer;
 	end;
 	pGameController = ^GameController;
 
@@ -26,6 +29,7 @@ procedure new_player(var p: Player; name: ansistring; b, c: IntVector; max_force
 procedure new_gc(var g: GameController; var levelstring: ansistring);
 procedure gc_shoot(var g: GameController; pl: WhichPlayer; angle, speed: double);
 procedure gc_step(var g: GameController; delta: double);
+function gc_player_side(var g: GameController; var p: Player) : Side;
 
 
 implementation
@@ -79,6 +83,15 @@ end;
 procedure gc_step(var g: GameController; delta: double);
 begin
 	pc_step(g.pc^, delta);
+end;
+
+{ Returns on which side of the field the player is }
+function gc_player_side(var g: GameController; var p: Player) : Side;
+begin
+	if p.cannon.x < g.pc^.field^.width / 2 then
+		gc_player_side := FortLeft
+	else
+		gc_player_side := FortRight;
 end;
 
 begin

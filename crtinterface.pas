@@ -44,6 +44,7 @@ type
 		  and assure the minimal number of IO operations }
 		screen: array of array of CharOnScreen;
 		needs_redraw: boolean;
+		sight_marker: IntVector;
 	end;
 
 	ABInterface = record
@@ -53,19 +54,10 @@ type
 		paneltl, paneltc, paneltr, panelbl, panelbc, panelbr: ansistring;
 		exitting, shooting: boolean;
 		tpanel_needs_update, bpanel_needs_update: boolean;
-		sight_angle: double;
-		{ The place from which we are aiming }
-		sight_center: IntVector;
-		shoot_force: double;
-		shoot_max_force: double;
 	end;
 
 procedure new_abinterface(var iface: ABInterface; gc: pGameController);
 procedure iface_step(var iface: ABInterface);
-procedure iface_set_sight(var iface: ABInterface; p: IntVector; angle, force: double);
-function iface_get_sight(var iface: ABInterface) : double;
-{ Temporary }
-procedure write_panel(var iface: ABInterface; pan: WhichPanel; place: WhichPlace; s: ansistring);
 
 
 implementation
@@ -95,11 +87,13 @@ begin
 end;
 
 { Forward declarations }
+procedure viewport_update_sight(var iface: ABInterface); forward;
 procedure viewport_update_fields(var iface: ABInterface); forward;
 procedure viewport_update_rockets(var iface: ABInterface); forward;
 procedure update_force_bar(var iface: ABInterface); forward;
 function sight_marker_pos(iface: ABInterface) : IntVector; forward;
 procedure update_panel(var iface: ABInterface; w: WhichPanel); forward;
+procedure write_panel(var iface: ABInterface; pan: WhichPanel; place: WhichPlace; s: ansistring); forward;
 procedure read_input(var iface: ABInterface); forward;
 function render_field(var iface: ABInterface; p: IntVector) : CharOnScreen; forward;
 function render_rocket(var iface: ABInterface; r: Rocket) : CharOnScreen; forward;
@@ -186,6 +180,7 @@ procedure viewport_update(var iface: ABInterface);
 begin
 	viewport_update_fields(iface);
 	viewport_update_rockets(iface);
+	viewport_update_sight(iface);
 end;
 
 { Redraws the fields which are being animated }
@@ -216,55 +211,56 @@ begin
 	cur := iface.gc^.pc^.rockets.head;
 	while cur <> nil do
 	begin
-		c := render_rocket(iface, cur^.v);
-		pos := field_to_viewport_position(iface.view, iv(cur^.v.position));
-		if not cur^.v.removed then
-			viewport_putchar(iface.view, pos, c, False);
 		pos := field_to_viewport_position(iface.view, iv(cur^.v.oldpos));
 		c := render_field(iface, pos);
 		viewport_putchar(iface.view, pos, c, False);
+		pos := field_to_viewport_position(iface.view, iv(cur^.v.position));
+		c := render_rocket(iface, cur^.v);
+		if not cur^.v.removed then
+			viewport_putchar(iface.view, pos, c, False);
 		cur := cur^.next;
 	end;
 	GotoXY(1,1);
 end;
 
-procedure viewport_update_sight(var iface: ABInterface; old_mark: IntVector);
+procedure viewport_update_sight(var iface: ABInterface);
 var
-	view_pos: IntVector;
+	oview_pos, nview_pos: IntVector;
 	c: CharOnScreen;
 begin
-	view_pos := field_to_viewport_position(iface.view, old_mark);
-	c := render_field(iface, view_pos);
-	viewport_putchar(iface.view, view_pos, c, False);
+	oview_pos := field_to_viewport_position(iface.view, iface.view.sight_marker);
+	nview_pos := field_to_viewport_position(iface.view, sight_marker_pos(iface));
+	if oview_pos <> nview_pos then
+	begin
+		c := render_field(iface, oview_pos);
+		viewport_putchar(iface.view, oview_pos, c, False);
 
-	view_pos := field_to_viewport_position(iface.view, sight_marker_pos(iface));
-	c := render_field(iface, view_pos);
-	viewport_putchar(iface.view, view_pos, c, False);
-	GotoXY(1,1);
+		c := render_field(iface, nview_pos);
+		viewport_putchar(iface.view, nview_pos, c, False);
+		GotoXY(1,1);
+		iface.view.sight_marker := sight_marker_pos(iface);
+	end;
 end;
 
 procedure viewport_move_sight(var iface: ABInterface; delta: double);
-var
-	old_mark: IntVector;
 begin
-	old_mark:= sight_marker_pos(iface);
-	if iface.sight_center.x < iface.gc^.pc^.field^.width / 2 then
-		iface.sight_angle := iface.sight_angle - delta
+	if gc_player_side(iface.gc^, iface.gc^.current_player^) = FortLeft then
+		iface.gc^.current_player^.angle := iface.gc^.current_player^.angle - delta
 	else
-		iface.sight_angle := iface.sight_angle + delta;
-	viewport_update_sight(iface, old_mark);
+		iface.gc^.current_player^.angle := iface.gc^.current_player^.angle + delta;
+	viewport_update_sight(iface);
 end;
 
 function sight_marker_pos(iface: ABInterface) : IntVector;
 begin
-	sight_marker_pos := iv(fc(iface.sight_center) +
-		v(cos(iface.sight_angle) * SIGHT_LEN,
-		  sin(iface.sight_angle) * SIGHT_LEN));
+	sight_marker_pos := iv(fc(iface.gc^.current_player^.cannon) +
+		v(cos(iface.gc^.current_player^.angle) * SIGHT_LEN,
+		  sin(iface.gc^.current_player^.angle) * SIGHT_LEN));
 end;
 
 procedure viewport_change_force(var iface: ABInterface; delta: double);
 begin
-	iface.shoot_force := max(0, min(iface.shoot_max_force, iface.shoot_force + delta));
+	iface.gc^.current_player^.force := max(0, min(iface.gc^.current_player^.max_force, iface.gc^.current_player^.force + delta));
 	update_force_bar(iface);
 end;
 
@@ -275,7 +271,7 @@ var
 	i: integer;
 begin
 	bar_max_len := trunc(iface.width / 4);
-	bar_len := trunc(bar_max_len * iface.shoot_force / iface.shoot_max_force);
+	bar_len := trunc(bar_max_len * iface.gc^.current_player^.force / iface.gc^.current_player^.max_force);
 	bar := 'Force: [';
 	for i := 1 to bar_len do
 		bar := bar + '=';
@@ -297,26 +293,7 @@ begin
 	iface.shooting := False;
 	iface.tpanel_needs_update := True;
 	iface.bpanel_needs_update := True;
-	iface.sight_angle := -1.57;
-	iface.sight_center := iv(0, 0);
-	iface.shoot_force := 0;
-end;
-
-function iface_get_sight(var iface: ABInterface) : double;
-begin
-	iface_get_sight := iface.sight_angle;
-end;
-
-procedure iface_set_sight(var iface: ABInterface; p: IntVector; angle, force: double);
-var
-	old_mark: IntVector;
-begin
-	old_mark := sight_marker_pos(iface);
-	iface.sight_center := p;
-	iface.sight_angle := angle;
-	iface.shoot_force := force;
-	viewport_update_sight(iface, old_mark);
-	update_force_bar(iface);
+	iface.view.sight_marker := sight_marker_pos(iface);
 end;
 
 procedure iface_redraw(var iface: ABInterface);
