@@ -1,9 +1,9 @@
 TYPES=Rocket IntVector
+TARGET=asciibattle
+all: $(TARGET)
 
-all: asciibattle
-
-asciibattle: asciibattle.pas crtinterface.pas game.pas battlefield.pas physics.pas types.pas config.pas staticconfig.pas lists.pas geometry.pas
-	fpc -g -pg -Mobjfpc asciibattle.pas
+$(TARGET): $(TARGET).pas crtinterface.pas game.pas battlefield.pas physics.pas types.pas config.pas staticconfig.pas lists.pas geometry.pas
+	fpc -g -pg -Mobjfpc $(TARGET).pas
 
 lists.pas: list.pas.in listimpl.pas.in
 	echo "unit Lists;" > lists.pas
@@ -19,6 +19,6 @@ lists.pas: list.pas.in listimpl.pas.in
 	echo "end." >> lists.pas
 
 clean:
-	rm -fr *.o *.ppu lists.pas early_demo iface_test
+	rm -fr *.o *.ppu lists.pas $(TARGET)
 
 
