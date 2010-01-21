@@ -1,28 +1,42 @@
 program asciibattle;
-uses CrtInterface, crt, Game, Physics, BattleField, Geometry, SysUtils;
+uses CrtInterface, crt, Game, Physics, BattleField, Geometry, Config, StaticConfig, SysUtils;
 
 var
 	iface: ABInterface;
+	err: ErrorCode;
+	bf: BField;
 	gc: GameController;
-	pl: text;
-	level, t: ansistring;
+	level: ansistring;
 	turn: integer;
+	field_w, field_h: integer;
 begin
-	assign(pl, ParamStr(1));
-	reset(pl);
-	readln(pl, level);
-	level := level + ' ';
-	while not eof(pl) do begin
-		readln(pl, t);
-		level := level + t;
+	err := read_field_from_file(ParamStr(1), level);
+	if err.code <> OK then
+	begin
+		writeln(err.msg);
+		halt;
+	end;
+
+	parse_bfield_dimensions(level, field_w, field_h);
+	if (field_w < 1) or (field_w > MAX_W) or (field_h < 1) or (field_h > MAX_H) then
+	begin
+		writeln('Unsupported field size: ', field_w, ' x ', field_h, '.');
+		halt;
+	end;
+	new_bfield(bf, field_w, field_h);
+	err := parse_bfield_string(bf, iv(0, 0), level);
+	if err.code <> OK then
+	begin
+		writeln(err.msg);
+		halt;
 	end;
 
 	gc.player1.cannon := iv(5, 15);
 	gc.player1.max_force := 30;
 	gc.player2.cannon := iv(60, 12);
 	gc.player2.max_force := 30;
-	new_gc(gc, level);
-	gc.current_player := @gc.player1;
+	new_gc(gc, @bf);
+	gc_change_player(gc, gc.player1);
 	new_abinterface(iface, @gc);
 	turn := 0;
 	while true do
@@ -35,13 +49,13 @@ begin
 		begin
 			if (turn mod 2) = 0 then
 			begin
-				gc_shoot(gc, PlayerOne, gc.player1.angle, gc.player1.force);
-				gc.current_player := @gc.player2;
+				gc_shoot(gc);
+				gc_change_player(gc, gc.player2);
 			end
 			else
 			begin
-				gc_shoot(gc, PlayerTwo, gc.player2.angle, gc.player2.force);
-				gc.current_player := @gc.player1;
+				gc_shoot(gc);
+				gc_change_player(gc, gc.player1);
 			end;
 			iface.shooting := False;
 			inc(turn);

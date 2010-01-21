@@ -10,6 +10,8 @@ const
 	FIELD_WIDTH = 0.2;
 	FIELD_HEIGHT = 0.39;
 	SIGHT_LEN = 2;
+	MAX_W = 5000;
+	MAX_H = 5000;
 
 implementation
 

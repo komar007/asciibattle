@@ -1,7 +1,7 @@
 unit Game;
 
 interface
-uses Physics, Geometry, Types, Lists;
+uses Physics, Geometry, BattleField, Types, Lists;
 
 type
 	WhichPlayer = (PlayerOne, PlayerTwo);
@@ -26,14 +26,15 @@ type
 	pGameController = ^GameController;
 
 procedure new_player(var p: Player; name: ansistring; b, c: IntVector; max_force: double);
-procedure new_gc(var g: GameController; var levelstring: ansistring);
-procedure gc_shoot(var g: GameController; pl: WhichPlayer; angle, speed: double);
+procedure new_gc(var g: GameController; bf: pBField);
+procedure gc_shoot(var g: GameController);
+procedure gc_change_player(var g: GameController; var p: Player);
 procedure gc_step(var g: GameController; delta: double);
 function gc_player_side(var g: GameController; var p: Player) : Side;
 
 
 implementation
-uses BattleField, Config;
+uses Config;
 
 
 procedure new_player(var p: Player; name: ansistring; b, c: IntVector; max_force: double);
@@ -44,40 +45,38 @@ begin
 	p.max_force := max_force;
 end;
 
-procedure new_gc(var g: GameController; var levelstring: ansistring);
+procedure new_gc(var g: GameController; bf: pBField);
 var
-	bf: pBField;
 	pc: pPhysicsController;
-	field_w, field_h: integer;
 begin
-	parse_bfield_dimensions(levelstring, field_w, field_h);
-	new(bf);
-	new_bfield(bf^, field_w, field_h);
-	parse_bfield_string(bf^, iv(0, 0), levelstring);
 	new(pc);
 	new_pc(pc^, bf);
 	g.pc := pc;
 end;
 
-procedure gc_shoot(var g: GameController; pl: WhichPlayer; angle, speed: double);
+procedure gc_shoot(var g: GameController);
 var
 	r: Rocket;
 	whereshoot: IntVector;
+	force, angle: double;
 begin
-	if pl = PlayerOne then
-		whereshoot := g.player1.cannon
-	else
-		whereshoot := g.player2.cannon;
-	whereshoot := whereshoot - iv(0, -1);
+	whereshoot := g.current_player^.cannon - iv(0, -1);
+	force := g.current_player^.force;
+	angle := g.current_player^.angle;
 
 	new_rocket(r,
-		fc(whereshoot),                             { launch position (1 above cannon) }
-		v(speed * cos(angle), speed * sin(angle)),  { initial velocity }
-		v(0, 9.81),                                 { gravity }
-		2,                                          { explosion radius }
-		50                                          { explosion force }
+		fc(whereshoot),                         { launch position (1 above cannon) }
+		force * v(cos(angle), sin(angle)),  	{ initial velocity }
+		v(0, 9.81),                             { gravity }
+		2,                                      { explosion radius }
+		50                                      { explosion force }
 	);
 	pc_add_rocket(g.pc^, r);
+end;
+
+procedure gc_change_player(var g: GameController; var p: Player);
+begin
+	g.current_player := @p;
 end;
 
 procedure gc_step(var g: GameController; delta: double);
