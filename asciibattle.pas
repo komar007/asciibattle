@@ -10,19 +10,20 @@ var
 	turn: integer;
 	field_w, field_h: integer;
 begin
-	err := read_field_from_file(ParamStr(1), level);
+	err := read_file_to_string(ParamStr(1), level);
 	if err.code <> OK then
 	begin
 		writeln(err.msg);
 		halt;
 	end;
 
-	parse_bfield_dimensions(level, field_w, field_h);
-	if (field_w < 1) or (field_w > MAX_W) or (field_h < 1) or (field_h > MAX_H) then
+	err := parse_bfield_dimensions(level, field_w, field_h);
+	if err.code <> OK then
 	begin
-		writeln('Unsupported field size: ', field_w, ' x ', field_h, '.');
+		writeln(err.msg);
 		halt;
 	end;
+
 	new_bfield(bf, field_w, field_h);
 	err := parse_bfield_string(bf, iv(0, 0), level);
 	if err.code <> OK then
