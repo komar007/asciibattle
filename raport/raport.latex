@@ -122,6 +122,32 @@ Dodatkowe założenia dotyczące działania programu i~funkcji:
 \end{itemize}
 
 \section{Analiza zadania i propozycja rozwiązania}
+Gra ASCIIBattle składa się z symulatora fizyki, którego składowe stanową główny model wzorca MVC, interfejsu użytkownika korzystającego z biblioteki Crt, będącego widokiem, oraz kontrolera rozgrywki połączonego z kodem głównego programu. Nie jest zachowana pełna zgodność ze wzorcem.
+
+\subsection{Symulator fizyki}
+Symulator fizyki dokonuje symulacji ruchu rakiet oraz eksplozji pola gry bazując na następujących założeniach:
+
+\begin{itemize}
+	\item{przestrzeń gry jest ciągła, 2-wymiarowa i opisana jednostkami układu SI,}
+	\item{przestrzeń gry jest podzielona na pola reprezentowane na ekranie przez pojedyncze znaki ASCII,}
+	\item{rozmiar pojedynczego pola może być dowolnie ustawiony wewnątrz kodu gry. W celu zapewnienia grywalności i proporcji został on ustawiony metodą prób i błędów na 0.2 x 0.39m,}
+	\item{pola gry są niemobilne, mogą jedynie się palić, ale nie przemieszczać,}
+	\item{każde pole posiada informację o jego ,,stanie zdrowia'' w postaci liczbowej (hp),}
+	\item{palenie się pola polega na stopniowym zmniejszaniu jego hp,}
+	\item{rakiety to jedyne obiekty mobilne,}
+	\item{rakiety nie mają odzwierciedlenia na planszy, nie są reprezentowane przez pola, ale znajdują się na liście, która jest sekwencyjnie przeglądana w celu odświeżenia stanu rakiet,}
+	\item{rakieta posiada parametry: promień wybuchu oraz siłę wybuchu.}
+\end{itemize}
+
+Wystrzelenie rakiety odbywa się przez dodanie jej do listy rakiet i ustawienie prędkości początkowej oraz przyspieszenia odpowiadającego grawitacji. Ruch jest symulowany przy wykorzystaniu zasad dynamiki Newtona.
+
+Gdy nastąpi kolizja rakiety z polem gry, tylko pola, które są nie dalej od punktu wybuchu niż długość promienia wybuchu, doznają obrażeń. Siła obrażenia (ilość traconych punktów życia) jest odwrotnie proporcjonalna do kwadratu odległości od punktu wybuchu. Pola o hp = 0 traktowane są jak powietrze.
+
+\subsection{Interfejs użytkownika}
+Interfejs użytkownika ma za zadanie wyświetlać obecny stan gry w postaci reprezentacji planszy za pomocą znaków na ekranie oraz dwóch paneli na górze i dole ekranu, informujących o tym, kto gra, ile ma rakiet, itp. Oprócz tego interfejs odczytuje naciśnięte przez użytkownika klawisze. Klawisze dotyczące obsługi interfejsu (np.~przewijanie ekranu) są obsługiwane wewnętrznie, natomiast naciśnięcia innych klawiszy skutkują ustawieniem odpowiednich flag w strukturze stanu interfejsu, które może odczytać program główny i odpowiednio zareagować.
+
+W celu optymalizacji ilości operacji wejścia/wyjścia w każdym kroku animacji odświeżane są tylko pola planszy, których stan uległ zmianie od ostatniego kroku. Do tego celu wykorzystywana jest lista obiektów animowanych, modyfikowana na bieżąco przez symulator fizyki.
+
 Tę część należy przeprowadzić przez pisaniem kodu. Należy tu umieścić krótką analizę zagadnienia, tzn.~opis algorytmu, struktur danych, format danych wejściowych i~wyjściowych.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Specyfikacja zewnętrzna}
@@ -158,7 +184,7 @@ int main ()
 Proszę pamiętać o formatowaniu kodu (wcięcia, spacje)!
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Uzyskane wyniki}
-Wyniki można przestawić w~różny sposób, np. w tabeli ({\it vide} tabela \ref{tab:1}), czy na~rysunku ({\it vide} rycina \ref{test}). Albo po prostu opisać uzyskane wyniki.
+Wyniki można przestawić w~różny sposób, np. w tabeli ({\it vide} tabela \ref{tab:1}), czy na~rysunku ({\it vide} rycina ). Albo po prostu opisać uzyskane wyniki.
 
 \begin{table*}
 \caption{Czas wykonania programu i~zajętość pamięci}
@@ -178,13 +204,6 @@ Wyniki można przestawić w~różny sposób, np. w tabeli ({\it vide} tabela \re
 \end{center}
 \end{small}
 \end{table*}
-
-\begin{figure}[h]
-  \centering
-  % Requires \usepackage{graphicx}
-  \includegraphics[width=0.8\textwidth]{godlo.eps}\\
-  \caption{test}\label{test}
-\end{figure}
 
 
 \section{Wnioski}
