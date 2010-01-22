@@ -17,6 +17,7 @@ type
 	ConfigPair = record
 		key: ansistring;
 		value: ansistring;
+		line: integer;
 	end;
 
 Operator = (a: ConfigPair; b: ConfigPair) eqpair : boolean;

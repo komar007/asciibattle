@@ -253,6 +253,7 @@ begin
 		end;	
 		pair.value := trim(pair.value);
 		pair.key := trim(pair.key);
+		pair.line := l;
 		push_front(pairs, pair);
 	end;
 end;
@@ -265,11 +266,11 @@ var
 	what: ansistring;
 	num: integer;
 begin
+	parse_game_string.code := OK;
 	new_list(list);
 	err := parse_keys(list, options);
 	if err.code <> OK then
 	begin
-		writeln('asdasd');
 		parse_game_string := err;
 		exit;
 	end;
@@ -290,14 +291,14 @@ begin
 			else
 			begin
 				parse_game_string.code := INVALID_KEY;
-				parse_game_string.msg := 'Invalid player description key `' + cur^.v.key + '''';
+				parse_game_string.msg := 'Invalid player description key `' + cur^.v.key + ''' in line ' + IntToStr(cur^.v.line);
 				break;
 			end;
 		end
 		else
 		begin
 			parse_game_string.code := INVALID_KEY;
-			parse_game_string.msg := 'Invalid key `' + cur^.v.key + '''';
+			parse_game_string.msg := 'Invalid key `' + cur^.v.key + ''' in line ' + IntToStr(cur^.v.line);
 			break;
 		end;
 		cur := cur^.next;
