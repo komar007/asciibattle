@@ -1,4 +1,4 @@
-TYPES=Rocket IntVector
+TYPES=Rocket IntVector ConfigPair
 TARGET=asciibattle
 all: $(TARGET)
 

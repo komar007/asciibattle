@@ -1,7 +1,7 @@
 unit Config;
 
 interface
-uses BattleField, Geometry, StaticConfig;
+uses BattleField, Geometry, StaticConfig, Types, Lists;
 
 const
 	NEWLINE = chr(10);
@@ -16,7 +16,7 @@ type
 		a: integer;
 	end;
 
-function parse_keys(var conf: ConfigStruct; confstr: ansistring) : ErrorCode;
+function parse_keys(var pairs: ConfigPairList; confstr: ansistring) : ErrorCode;
 function parse_bfield_dimensions(var field_str: ansistring; var w, h: integer; var nextpos: integer) : ErrorCode;
 function parse_bfield_dimensions(var field_str: ansistring; var w, h: integer) : ErrorCode;
 function parse_bfield_string(var field: BField; origin: IntVector; var field_str: ansistring; var cannon, king: IntVector) : ErrorCode;
@@ -212,9 +212,9 @@ begin
 	is_sensible := a in [' '..'~'];
 end;
 
-function parse_keys(var conf: ConfigStruct; confstr: ansistring) : ErrorCode;
+function parse_keys(var pairs: ConfigPairList; confstr: ansistring) : ErrorCode;
 var
-	key, value: ansistring;
+	pair: ConfigPair;
 	len: integer;
 	i, l: integer;
 begin
@@ -223,7 +223,7 @@ begin
 	l := 1;
 	while i <= len do
 	begin
-		key := '';
+		pair.key := '';
 		while (i <= len) and (is_whitespace(confstr[i]) and not (confstr[i] = NEWLINE)) do
 			inc(i);
 		if (i > len) or (confstr[i] = NEWLINE) then
@@ -235,7 +235,7 @@ begin
 		while (i <= len) and not (is_separator(confstr[i]) or (confstr[i] = NEWLINE)) do
 		begin
 			if is_sensible(confstr[i]) then
-				key := key + confstr[i];
+				pair.key := pair.key + confstr[i];
 			inc(i);
 		end;
 		if (i > len) or (confstr[i] = NEWLINE) then
@@ -244,14 +244,16 @@ begin
 			parse_keys.msg := 'Incomplete key-value pair in line: ' + IntToStr(l);
 			exit;
 		end;
-		inc(i); value := '';
+		inc(i); pair.value := '';
 		while (i <= len) and (confstr[i] <> NEWLINE) do
 		begin
 			if is_sensible(confstr[i]) then
-				value := value + confstr[i];
+				pair.value := pair.value + confstr[i];
 			inc(i);
 		end;	
-		writeln('Line: ', l, ': Key: ', key, ', Value: ', value, '.');
+		pair.value := trim(pair.value);
+		pair.key := trim(pair.key);
+		push_front(pairs, pair);
 	end;
 end;
 

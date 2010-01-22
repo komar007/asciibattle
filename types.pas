@@ -14,6 +14,12 @@ type
 		exp_force: double;
 	end;
 
+	ConfigPair = record
+		key: ansistring;
+		value: ansistring;
+	end;
+
+Operator = (a: ConfigPair; b: ConfigPair) eqpair : boolean;
 Operator = (a: Rocket; b: Rocket) eqrocket : boolean;
 
 procedure new_rocket(var r: Rocket; pos: Vector; vel: Vector; acc: Vector; rad: integer; f: double);
@@ -21,6 +27,10 @@ procedure new_rocket(var r: Rocket; pos: Vector; vel: Vector; acc: Vector; rad: 
 
 implementation
 
+Operator = (a: ConfigPair; b: ConfigPair) eqpair : boolean;
+begin
+	eqpair := (a.key = b.key) and (a.value = b.value);
+end;
 
 { Rocket operators }
 
