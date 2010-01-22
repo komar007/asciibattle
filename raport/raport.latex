@@ -148,8 +148,9 @@ Interfejs użytkownika ma za zadanie wyświetlać obecny stan gry w postaci repr
 
 W celu optymalizacji ilości operacji wejścia/wyjścia w każdym kroku animacji odświeżane są tylko pola planszy, których stan uległ zmianie od ostatniego kroku. Do tego celu wykorzystywana jest lista obiektów animowanych, modyfikowana na bieżąco przez symulator fizyki.
 
-Tę część należy przeprowadzić przez pisaniem kodu. Należy tu umieścić krótką analizę zagadnienia, tzn.~opis algorytmu, struktur danych, format danych wejściowych i~wyjściowych.
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Kontroler rozgrywki}
+Kontroler rozgrywki zaimplementowany jest jako moduł Game oraz program główny. Moduł Game odpowiada za translacje poleceń strzału zawodnika na polecenia zrozumiałe dla symulatora fizyki (tzn.~ustawienie rakiety w danym punkcie oraz jej prędkości początkowej) oraz kontrolowanie logiki gry: sprawdzanie wygranej, stanu życia graczy, zmiana siły wiatru. Główny program ma za zadanie odczytać informacje z plików konfiguracyjnych, zainicjalizować struktury danych i kontrolować rozgrywkę przez naprzemienne wystrzeliwanie z dział przeciwników.
+
 \section{Specyfikacja zewnętrzna}
 Tu proszę napisać, jak należy się posługiwać programem (pewnego rodzaju instrukcja obsługi). 
 
