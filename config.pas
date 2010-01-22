@@ -8,24 +8,26 @@ const
 
 type
 	ErrorCode = record
-		code: (OK, FILE_ERROR, BFIELD_OVERFLOW, PARSE_ERROR, INCOMPL_BFIELD, INCOMPL_PAIR);
+		code: (OK, FILE_ERROR, BFIELD_OVERFLOW, PARSE_ERROR, INCOMPL_BFIELD, INCOMPL_PAIR, INVALID_KEY);
 		msg: ansistring;
 	end;
 
 	ConfigStruct = record
-		a: integer;
+		bfield_file: ansistring;
+		fort_file: array [1..2] of ansistring;
+		name: array[1..2] of ansistring;
 	end;
 
-function parse_keys(var pairs: ConfigPairList; confstr: ansistring) : ErrorCode;
 function parse_bfield_dimensions(var field_str: ansistring; var w, h: integer; var nextpos: integer) : ErrorCode;
 function parse_bfield_dimensions(var field_str: ansistring; var w, h: integer) : ErrorCode;
 function parse_bfield_string(var field: BField; origin: IntVector; var field_str: ansistring; var cannon, king: IntVector) : ErrorCode;
 function parse_bfield_string(var field: BField; origin: IntVector; var field_str: ansistring) : ErrorCode;
 function read_file_to_string(filename: ansistring; var ostr: ansistring) : ErrorCode;
+function parse_game_string(var options: ansistring; var config: ConfigStruct) : ErrorCode;
 
 
 implementation
-uses SysUtils;
+uses SysUtils, strutils;
 
 
 { Auxiliary function used by parse_num }
@@ -73,6 +75,7 @@ function parse_bfield_dimensions(var field_str: ansistring; var w, h: integer; v
 var
 	i: integer;
 begin
+	parse_bfield_dimensions.code := OK;
 	if (length(field_str) < 5) or not numeric(field_str[1]) then
 	begin
 		parse_bfield_dimensions.code := PARSE_ERROR;
@@ -93,8 +96,6 @@ begin
 		parse_bfield_dimensions.code := BFIELD_OVERFLOW;
 		parse_bfield_dimensions.msg := 'Unsupported field dimensions: ' + IntToStr(w) + ' x ' + IntToStr(h);
 	end
-	else
-		parse_bfield_dimensions.code := OK;
 end;
 
 function parse_bfield_string(var field: BField; origin: IntVector; var field_str: ansistring) : ErrorCode;
@@ -113,6 +114,7 @@ var
 	wx, wy: integer;
 	err: ErrorCode;
 begin
+	parse_bfield_string.code := OK;
 	err := parse_bfield_dimensions(field_str, w, h, i);
 	if err.code <> OK then
 	begin
@@ -174,8 +176,6 @@ begin
 		parse_bfield_string.msg := 'The field is incomplete. Got ' + IntToStr(y * w + x) +
 			' characters, expected ' + IntToStr(w * h);
 	end
-	else
-		parse_bfield_string.code := OK;
 end;
 
 function read_file_to_string(filename: ansistring; var ostr: ansistring) : ErrorCode;
@@ -183,6 +183,7 @@ var
 	fp: text;
 	t: ansistring;
 begin
+	read_file_to_string.code := OK;
 	{$I-}
 	assign(fp, filename);
 	reset(fp);
@@ -197,8 +198,6 @@ begin
 		read_file_to_string.code := FILE_ERROR;
 		read_file_to_string.msg := 'There was a problem reading file: ' + filename + '!';
 	end
-	else
-		read_file_to_string.code := OK;
 	{$I+}
 end;
 
@@ -212,12 +211,13 @@ begin
 	is_sensible := a in [' '..'~'];
 end;
 
-function parse_keys(var pairs: ConfigPairList; confstr: ansistring) : ErrorCode;
+function parse_keys(var pairs: ConfigPairList; var confstr: ansistring) : ErrorCode;
 var
 	pair: ConfigPair;
 	len: integer;
 	i, l: integer;
 begin
+	parse_keys.code := OK;
 	len := length(confstr);
 	i := 0;
 	l := 1;
@@ -254,6 +254,53 @@ begin
 		pair.value := trim(pair.value);
 		pair.key := trim(pair.key);
 		push_front(pairs, pair);
+	end;
+end;
+
+function parse_game_string(var options: ansistring; var config: ConfigStruct) : ErrorCode;
+var
+	list: ConfigPairList;
+	cur: pConfigPairNode;
+	err: ErrorCode;
+	what: ansistring;
+	num: integer;
+begin
+	new_list(list);
+	err := parse_keys(list, options);
+	if err.code <> OK then
+	begin
+		writeln('asdasd');
+		parse_game_string := err;
+		exit;
+	end;
+	cur := list.head;
+	while cur <> nil do
+	begin
+		if cur^.v.key = 'bfield_file' then
+			config.bfield_file := cur^.v.value
+		else if (length(cur^.v.key) >= 8) and
+			AnsiStartsStr('player', cur^.v.key) and (cur^.v.key[7] in ['1', '2']) then
+		begin
+			num := ord(cur^.v.key[7]) - ord('0');
+			what := AnsiMidStr(cur^.v.key, 9, 100000);
+			if what = 'fort_file' then
+				config.fort_file[num] := cur^.v.value
+			else if what = 'name' then
+				config.name[num] := cur^.v.value
+			else
+			begin
+				parse_game_string.code := INVALID_KEY;
+				parse_game_string.msg := 'Invalid player description key `' + cur^.v.key + '''';
+				break;
+			end;
+		end
+		else
+		begin
+			parse_game_string.code := INVALID_KEY;
+			parse_game_string.msg := 'Invalid key `' + cur^.v.key + '''';
+			break;
+		end;
+		cur := cur^.next;
 	end;
 end;
 
