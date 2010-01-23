@@ -15,6 +15,7 @@ type
 	ConfigStruct = record
 		bfield_file: ansistring;
 		fort_file: array [1..2] of ansistring;
+		fort_pos: array [1..2] of IntVector;
 		name: array[1..2] of ansistring;
 	end;
 
@@ -133,7 +134,7 @@ begin
 	x := 0; y := 0;
 	for i := i to len do
 	begin
-		if numeric(field_str[i]) or (field_str[i] = '.') then
+		if numeric(field_str[i]) or (field_str[i] in ['.', 'C', 'K']) then
 		begin
 			{ Omit the dot which means `transparent' } 
 			if numeric(field_str[i]) then
@@ -145,7 +146,11 @@ begin
 				field.arr[wx, wy].current_hp := field.arr[wx, wy].hp;
 				field.arr[wx, wy].previous_hp := field.arr[wx, wy].hp;
 				field.arr[wx, wy].hp_speed := 0;
-			end;
+			end
+			else if field_str[i] = 'C' then
+				cannon := iv(x, y)
+			else if field_str[i] = 'K' then
+				king := iv(x, y);
 			inc(x);
 			if not (x < w) then
 			begin
@@ -157,17 +162,10 @@ begin
 			continue
 		else
 		begin
-			if field_str[i] = 'C' then
-				cannon := iv(x, y)
-			else if field_str[i] = 'K' then
-				king := iv(x, y)
-			else
-			begin
-				parse_bfield_string.code := PARSE_ERROR;
-				parse_bfield_string.msg := 'Malformed field file at byte ' + IntToStr(i) + 
-					': got: `' + field_str[i] + ''', expected digit, `K'', `C'' or `.''';
-				exit;
-			end;
+			parse_bfield_string.code := PARSE_ERROR;
+			parse_bfield_string.msg := 'Malformed field file at byte ' + IntToStr(i) + 
+				': got: `' + field_str[i] + ''', expected digit, `K'', `C'' or `.''';
+			exit;
 		end;
 	end;
 	if (y * w + x) < (w * h) then
@@ -265,6 +263,7 @@ var
 	err: ErrorCode;
 	what: ansistring;
 	num: integer;
+	i: integer;
 begin
 	parse_game_string.code := OK;
 	new_list(list);
@@ -288,6 +287,11 @@ begin
 				config.fort_file[num] := cur^.v.value
 			else if what = 'name' then
 				config.name[num] := cur^.v.value
+			else if what = 'fort_pos' then
+			begin
+				i := parse_num(cur^.v.value, 1, config.fort_pos[num].x);
+				parse_num(cur^.v.value, i, config.fort_pos[num].y);
+			end
 			else
 			begin
 				parse_game_string.code := INVALID_KEY;

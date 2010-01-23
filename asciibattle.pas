@@ -51,6 +51,27 @@ begin
 	end;
 end;
 
+procedure read_fort(var bf: BField; var conf: ConfigStruct; num: integer);
+var
+	filename: ansistring;
+	err: ErrorCode;
+	map: ansistring;
+begin
+	filename := config_filename(CFORT, conf.fort_file[num]);
+	err := read_file_to_string(filename, map);
+	if err.code <> OK then
+	begin
+		writeln('Error: no such fort (file: ', filename, ')');
+		halt;
+	end;
+	err := parse_bfield_string(bf, conf.fort_pos[num], map);
+	if err.code <> OK then
+	begin
+		writeln('Error reading fort file: ', err.msg, ' (file: ', filename, ')');
+		halt;
+	end;
+end;
+
 var
 	conf: ConfigStruct;
 	confdir: ansistring;
@@ -86,7 +107,6 @@ begin
 		writeln('Error reading map file: ', err.msg, ' (file: ', filename, ')');
 		halt;
 	end;
-
 	new_bfield(bf, field_w, field_h);
 	err := parse_bfield_string(bf, iv(0, 0), map);
 	if err.code <> OK then
@@ -94,6 +114,9 @@ begin
 		writeln('Error reading map file: ', err.msg, ' (file: ', filename, ')');
 		halt;
 	end;
+
+	read_fort(bf, conf, 1); 
+	read_fort(bf, conf, 2);
 
 	gc.player1.cannon := iv(5, 15);
 	gc.player1.max_force := 30;

@@ -512,19 +512,35 @@ var
 	field_pos: IntVector;
 	which: integer;
 	bg: shortint;
+	width, height: integer;
 begin
+	width := iface.gc^.pc^.field^.width;
+	height := iface.gc^.pc^.field^.height;
 	field_pos := viewport_to_field_position(iface.view, p);
+
+	if (field_pos.x < -1) or (field_pos.x > width) or 
+		(field_pos.y < -1) or (field_pos.y > height) then
+	begin
+		render_field.ch := ' ';
+		render_field.colors := (Black << 4) or White;
+		exit;
+	end;
 	if field_pos = sight_marker_pos(iface) then
 	begin
 		render_field.ch := '+';
 		render_field.colors := (Black << 4) or Blue;
 		exit;
-	end
-	else if (field_pos.x < 0) or (field_pos.x > iface.gc^.pc^.field^.width - 1) or
-		(field_pos.y < 0) or (field_pos.y > iface.gc^.pc^.field^.height - 1) then
+	end;
+	if ((field_pos.x = -1) or (field_pos.x = width) or (field_pos.y = height)) then
 	begin
 		render_field.ch := ' ';
-		render_field.colors := (Black << 4) or White;
+		render_field.colors := (Magenta << 4) or White;
+		exit;
+	end;
+	if (field_pos.y = -1) then
+	begin
+		render_field.ch := '-';
+		render_field.colors := (Black << 4) or DarkGray;
 		exit;
 	end;
 	bg := (Black << 4);
