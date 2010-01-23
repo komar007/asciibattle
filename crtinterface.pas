@@ -54,6 +54,7 @@ type
 		paneltl, paneltc, paneltr, panelbl, panelbc, panelbr: ansistring;
 		exitting, shooting: boolean;
 		tpanel_needs_update, bpanel_needs_update: boolean;
+		wind: integer;
 	end;
 
 procedure new_abinterface(var iface: ABInterface; gc: pGameController);
@@ -95,6 +96,7 @@ function sight_marker_pos(iface: ABInterface) : IntVector; forward;
 procedure update_force_bar(var iface: ABInterface); forward;
 procedure update_panel(var iface: ABInterface; w: WhichPanel); forward;
 procedure update_player_bar(var iface: ABInterface; p: integer); forward;
+procedure update_wind_bar(var iface: ABInterface); forward;
 procedure write_panel(var iface: ABInterface; pan: WhichPanel; place: WhichPlace; s: ansistring); forward;
 procedure read_input(var iface: ABInterface); forward;
 function render_field(var iface: ABInterface; p: IntVector) : CharOnScreen; forward;
@@ -296,6 +298,7 @@ begin
 	iface.tpanel_needs_update := True;
 	iface.bpanel_needs_update := True;
 	iface.view.sight_marker := sight_marker_pos(iface);
+	iface.wind := 0;
 end;
 
 procedure iface_redraw(var iface: ABInterface);
@@ -311,12 +314,55 @@ end;
 
 procedure iface_update(var iface: ABInterface);
 begin
+	update_wind_bar(iface);
 	revert_standard_colors;
 	if iface.tpanel_needs_update then
 		update_panel(iface, Top);
 	if iface.bpanel_needs_update then
 		update_panel(iface, Bottom);
 	viewport_update(iface);
+end;
+
+procedure update_wind_bar(var iface: ABInterface);
+var
+	wind: integer;
+	maxl: integer;
+	i: integer;
+	s: ansistring;
+begin
+	maxl := iface.width div 8;
+	wind := trunc(iface.gc^.pc^.wind / iface.gc^.max_wind * maxl);
+	if wind <> iface.wind then
+	begin
+		s := 'Wind: ';
+		if wind > 0 then
+		begin
+			s := s + '[';
+			for i := 1 to maxl do
+				s := s + ' ';
+			s := s + '$4|$1';
+			for i := 1 to wind do
+				s := s + '>';
+			for i := 1 to maxl - wind do
+				s := s + ' ';
+			s := s + '$0]'
+		end
+		else
+		begin
+			s := s + '[$1';
+			for i := 1 to maxl + wind do
+				s := s + ' ';
+			for i := 1 to -wind do
+				s := s + '<';
+			s := s + '$4|$0';
+			for i := 1 to maxl do
+				s := s + ' ';
+			s := s + ']';
+		end;
+
+		write_panel(iface, Top, Center, s);
+		iface.wind := wind;
+	end;
 end;
 
 procedure iface_step(var iface: ABInterface);

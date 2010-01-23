@@ -12,7 +12,6 @@ type
 		king: IntVector;
 		cannon: IntVector;
 		name: ansistring;
-		{ Used to remember settings in 2 player turn-based mode }
 		max_force: double;
 		angle, force: double;
 		color: shortint;
@@ -29,12 +28,13 @@ type
 	pGameController = ^GameController;
 
 procedure new_player(var p: Player; name: ansistring; k, c: IntVector; max_force: double);
-procedure new_gc(var g: GameController; bf: pBField; mw: double);
+procedure new_gc(var g: GameController; bf: pBField; var p1, p2: Player; mw: double);
 procedure gc_shoot(var g: GameController);
 procedure gc_change_player(var g: GameController; p: integer);
 procedure gc_step(var g: GameController; delta: double);
 function gc_player_side(var g: GameController; var p: Player) : Side;
 function gc_player_life(var g: GameController; p: integer) : integer;
+procedure set_initial_angle(var g: GameController; var p: Player);
 
 
 implementation
@@ -49,7 +49,7 @@ begin
 	p.max_force := max_force;
 end;
 
-procedure new_gc(var g: GameController; bf: pBField; mw: double);
+procedure new_gc(var g: GameController; bf: pBField; var p1, p2: Player; mw: double);
 var
 	pc: pPhysicsController;
 begin
@@ -58,6 +58,16 @@ begin
 	g.pc := pc;
 	g.wind_dir := random(2) * 2 - 1;
 	g.max_wind := mw;
+	g.player[1] := p1; set_initial_angle(g, g.player[1]);
+	g.player[2] := p2; set_initial_angle(g, g.player[2]);
+end;
+
+procedure set_initial_angle(var g: GameController; var p: Player);
+begin
+	if gc_player_side(g, p) = FortLeft then
+		p.angle := -pi/4
+	else
+		p.angle := -pi/4 * 3;
 end;
 
 procedure gc_shoot(var g: GameController);
@@ -87,9 +97,9 @@ end;
 
 procedure gc_step(var g: GameController; delta: double);
 begin
-	if random(50) = 0 then
+	if random(trunc(1/delta * WIND_CHANGE_TIME)) = 0 then
 		g.wind_dir := -g.wind_dir;
-	g.pc^.wind := g.pc^.wind + g.wind_dir * WIND_FLUCT;
+	g.pc^.wind := g.pc^.wind + g.wind_dir * WIND_FLUCT * (random(100)/100 + 0.5);
 	if abs(g.pc^.wind) > g.max_wind then
 	begin
 		g.pc^.wind := g.max_wind * (g.pc^.wind / abs(g.pc^.wind));

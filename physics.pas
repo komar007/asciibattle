@@ -88,8 +88,8 @@ end;
 procedure rocket_step(var p: PhysicsController; var r: Rocket; delta: double);
 begin
 	r.oldpos := r.position;
-	r.velocity := r.velocity + (r.acceleration * delta);
-	r.position := r.position + ((r.velocity + v(p.wind, 0)) * delta);
+	r.velocity := r.velocity + ((r.acceleration + v(p.wind, 0)) * delta);
+	r.position := r.position + (r.velocity * delta);
 end;
 
 procedure rockets_step(var p: PhysicsController; delta: double);

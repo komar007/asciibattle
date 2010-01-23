@@ -51,7 +51,7 @@ begin
 	end;
 end;
 
-procedure read_fort(var gc: GameController; var conf: ConfigStruct; num: integer);
+procedure read_fort(var field: BField; var conf: ConfigStruct; var pl: Player; num: integer);
 var
 	filename: ansistring;
 	err: ErrorCode;
@@ -65,14 +65,14 @@ begin
 		writeln('Error: no such fort (file: ', filename, ')');
 		halt;
 	end;
-	err := parse_bfield_string(gc.pc^.field^, conf.fort_pos[num], map, cannon, king, conf.fort_modifier, num);
+	err := parse_bfield_string(field, conf.fort_pos[num], map, cannon, king, conf.fort_modifier, num);
 	if err.code <> OK then
 	begin
 		writeln('Error reading fort file: ', err.msg, ' (file: ', filename, ')');
 		halt;
 	end;
-	gc.player[num].cannon := cannon + conf.fort_pos[num];
-	gc.player[num].king := king + conf.fort_pos[num];
+	pl.cannon := cannon + conf.fort_pos[num];
+	pl.king := king + conf.fort_pos[num];
 end;
 
 var
@@ -86,6 +86,7 @@ var
 	map: ansistring;
 	turn: integer;
 	field_w, field_h: integer;
+	p1, p2: Player;
 begin	
 	if ParamCount = 0 then
 	begin
@@ -117,17 +118,17 @@ begin
 		writeln('Error reading map file: ', err.msg, ' (file: ', filename, ')');
 		halt;
 	end;
-	new_gc(gc, @bf, conf.max_wind);
-	gc.player[1].max_force := conf.max_force;
-	gc.player[1].force := conf.max_force / 2;
-	gc.player[2].max_force := conf.max_force;
-	gc.player[2].force := conf.max_force / 2;
-	gc.player[1].name := conf.name[1];
-	gc.player[2].name := conf.name[2];
-	gc.player[1].color := conf.color[1];
-	gc.player[2].color := conf.color[2];
-	read_fort(gc, conf, 1); 
-	read_fort(gc, conf, 2);
+	p1.max_force := conf.max_force;
+	p1.force := conf.max_force / 2;
+	p2.max_force := conf.max_force;
+	p2.force := conf.max_force / 2;
+	p1.name := conf.name[1];
+	p2.name := conf.name[2];
+	p1.color := conf.color[1];
+	p2.color := conf.color[2];
+	read_fort(bf, conf, p1, 1); 
+	read_fort(bf, conf, p2, 2);
+	new_gc(gc, @bf, p1, p2, conf.max_wind);
 
 	gc_change_player(gc, 1);
 	new_abinterface(iface, @gc);
