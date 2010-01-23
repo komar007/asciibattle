@@ -24,6 +24,7 @@ type
 		current_player: pPlayer;
 		max_wind: double;
 		wind_dir: integer;
+		player1_won, player2_won: boolean;
 	end;
 	pGameController = ^GameController;
 
@@ -60,6 +61,8 @@ begin
 	g.max_wind := mw;
 	g.player[1] := p1; set_initial_angle(g, g.player[1]);
 	g.player[2] := p2; set_initial_angle(g, g.player[2]);
+	g.player1_won := False;
+	g.player2_won := False;
 end;
 
 procedure set_initial_angle(var g: GameController; var p: Player);
@@ -95,6 +98,11 @@ begin
 	g.current_player := @g.player[p];
 end;
 
+function check_loose(var g: GameController; var p: Player) : boolean;
+begin
+	check_loose := g.pc^.field^.arr[p.king.x, p.king.y].current_hp = 0;
+end;
+
 procedure gc_step(var g: GameController; delta: double);
 begin
 	if random(trunc(1/delta * WIND_CHANGE_TIME)) = 0 then
@@ -106,6 +114,10 @@ begin
 		g.wind_dir := -g.wind_dir;
 	end;
 	pc_step(g.pc^, delta);
+	if check_loose(g, g.player[1]) then
+		g.player2_won := True;
+	if check_loose(g, g.player[2]) then
+		g.player1_won := True;
 end;
 
 { Returns on which side of the field the player is }

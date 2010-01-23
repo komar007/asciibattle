@@ -150,6 +150,18 @@ begin
 			iface.shooting := False;
 			inc(turn);
 		end;
+		if gc.player1_won then
+		begin
+			clrscr;
+			writeln('Player ', p1.name, ' won!');
+			halt;
+		end;
+		if gc.player2_won then
+		begin
+			clrscr;
+			writeln('Player ', p2.name, ' won!');
+			halt;
+		end;
 		delay(33);
 	end;
 end.
