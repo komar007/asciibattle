@@ -401,7 +401,7 @@ var
 	pl: pPlayer;
 begin
 	pl := @iface.gc^.player[p];
-	pstring := pl^.name + ' (' + IntToStr(gc_player_life(iface.gc^, p)) + ')';
+	pstring := pl^.name + ' (' + IntToStr(gc_player_life(iface.gc^, p)) + ' hp)';
 	if pl = iface.gc^.current_player then
 		pstring := '$4 > $0' + pstring + '$4 <$0 '
 	else

@@ -8,7 +8,7 @@ const
 
 type
 	ErrorCode = record
-		code: (OK, FILE_ERROR, BFIELD_OVERFLOW, PARSE_ERROR, INCOMPL_BFIELD, INCOMPL_PAIR, INVALID_KEY);
+		code: (OK, FILE_ERROR, BFIELD_OVERFLOW, PARSE_ERROR, INCOMPL_BFIELD, INCOMPL_PAIR, INVALID_KEY, MISSING_KEY);
 		msg: ansistring;
 	end;
 
@@ -148,7 +148,7 @@ begin
 			if numeric(field_str[i]) then
 				field.arr[wx, wy].hp := INITIAL_HP[el_type] * modifier
 			else if field_str[i] in ['C', 'K'] then
-				field.arr[wx, wy].hp := 300;
+				field.arr[wx, wy].hp := INITIAL_KING_HP;
 			if field_str[i] = 'C' then
 				cannon := iv(x, y);
 			if field_str[i] = 'K' then
@@ -256,6 +256,12 @@ begin
 		end;	
 		pair.value := trim(pair.value);
 		pair.key := trim(pair.key);
+		if pair.value = '' then
+		begin
+			parse_keys.code := INCOMPL_PAIR;
+			parse_keys.msg := 'Empty value in line: ' + IntToStr(l);
+			exit;
+		end;
 		pair.line := l;
 		push_front(pairs, pair);
 	end;
@@ -277,6 +283,8 @@ begin
 	config.name[2] := 'Player 2';
 	config.color[1] := 2;  {Green}
 	config.color[2] := 14; {Yellow}
+	config.fort_pos[1] := iv(0, 0);
+	config.fort_pos[2] := iv(0, 0);
 	parse_game_string.code := OK;
 	new_list(list);
 	err := parse_keys(list, options);
@@ -326,6 +334,21 @@ begin
 			break;
 		end;
 		cur := cur^.next;
+	end;
+	if config.bfield_file = '' then
+	begin
+		parse_game_string.code := MISSING_KEY;
+		parse_game_string.msg := 'Missing key bfield_file';
+	end;
+	if config.fort_file[1] = '' then
+	begin
+		parse_game_string.code := MISSING_KEY;
+		parse_game_string.msg := 'Missing key player1_fort_file';
+	end;
+	if config.fort_file[2] = '' then
+	begin
+		parse_game_string.code := MISSING_KEY;
+		parse_game_string.msg := 'Missing key player2_fort_file';
 	end;
 end;
 
