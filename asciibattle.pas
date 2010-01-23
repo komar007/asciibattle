@@ -65,7 +65,7 @@ begin
 		writeln('Error: no such fort (file: ', filename, ')');
 		halt;
 	end;
-	err := parse_bfield_string(gc.pc^.field^, conf.fort_pos[num], map, cannon, king);
+	err := parse_bfield_string(gc.pc^.field^, conf.fort_pos[num], map, cannon, king, conf.fort_modifier);
 	if err.code <> OK then
 	begin
 		writeln('Error reading fort file: ', err.msg, ' (file: ', filename, ')');
@@ -119,20 +119,23 @@ begin
 		halt;
 	end;
 	new_bfield(bf, field_w, field_h);
-	err := parse_bfield_string(bf, iv(0, 0), map);
+	err := parse_bfield_string(bf, iv(0, 0), map, 1);
 	if err.code <> OK then
 	begin
 		writeln('Error reading map file: ', err.msg, ' (file: ', filename, ')');
 		halt;
 	end;
 	new_gc(gc, @bf);
-	gc.player1.max_force := 30;
-	gc.player2.max_force := 30;
+	gc.player1.max_force := conf.max_force;
+	gc.player2.max_force := conf.max_force;
+	gc.player1.name := conf.name[1];
+	gc.player2.name := conf.name[2];
 	read_fort(gc, conf, 1); 
 	read_fort(gc, conf, 2);
 
 	gc_change_player(gc, gc.player1);
 	new_abinterface(iface, @gc);
+	iface_change_player(iface, gc.player1);
 	turn := 0;
 	while true do
 	begin

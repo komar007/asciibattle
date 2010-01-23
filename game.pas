@@ -68,8 +68,8 @@ begin
 		fc(whereshoot),                         { launch position (1 above cannon) }
 		force * v(cos(angle), sin(angle)),  	{ initial velocity }
 		v(0, 9.81),                             { gravity }
-		2,                                      { explosion radius }
-		50                                      { explosion force }
+		1.5,                                    { explosion radius }
+		30                                      { explosion force }
 	);
 	pc_add_rocket(g.pc^, r);
 end;
@@ -87,7 +87,7 @@ end;
 { Returns on which side of the field the player is }
 function gc_player_side(var g: GameController; var p: Player) : Side;
 begin
-	if p.cannon.x < g.pc^.field^.width / 2 then
+	if p.king.x < g.pc^.field^.width / 2 then
 		gc_player_side := FortLeft
 	else
 		gc_player_side := FortRight;

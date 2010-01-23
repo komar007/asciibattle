@@ -10,7 +10,7 @@ type
 		position: Vector;
 		oldpos: Vector;
 		removed: boolean;
-		exp_radius: integer;
+		exp_radius: double;
 		exp_force: double;
 	end;
 
@@ -23,7 +23,7 @@ type
 Operator = (a: ConfigPair; b: ConfigPair) eqpair : boolean;
 Operator = (a: Rocket; b: Rocket) eqrocket : boolean;
 
-procedure new_rocket(var r: Rocket; pos: Vector; vel: Vector; acc: Vector; rad: integer; f: double);
+procedure new_rocket(var r: Rocket; pos: Vector; vel: Vector; acc: Vector; rad: double; f: double);
 
 
 implementation
@@ -42,7 +42,7 @@ end;
 
 { Rocket functions }
 
-procedure new_rocket(var r: Rocket; pos: Vector; vel: Vector; acc: Vector; rad: integer; f: double);
+procedure new_rocket(var r: Rocket; pos: Vector; vel: Vector; acc: Vector; rad: double; f: double);
 begin
 	r.oldpos := pos;
 	r.position := pos;

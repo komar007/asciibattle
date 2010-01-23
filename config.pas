@@ -14,6 +14,8 @@ type
 
 	ConfigStruct = record
 		bfield_file: ansistring;
+		fort_modifier: double;
+		max_force: double;
 		fort_file: array [1..2] of ansistring;
 		fort_pos: array [1..2] of IntVector;
 		name: array[1..2] of ansistring;
@@ -21,8 +23,8 @@ type
 
 function parse_bfield_dimensions(var field_str: ansistring; var w, h: integer; var nextpos: integer) : ErrorCode;
 function parse_bfield_dimensions(var field_str: ansistring; var w, h: integer) : ErrorCode;
-function parse_bfield_string(var field: BField; origin: IntVector; var field_str: ansistring; var cannon, king: IntVector) : ErrorCode;
-function parse_bfield_string(var field: BField; origin: IntVector; var field_str: ansistring) : ErrorCode;
+function parse_bfield_string(var field: BField; origin: IntVector; var field_str: ansistring; var cannon, king: IntVector; modifier: double) : ErrorCode;
+function parse_bfield_string(var field: BField; origin: IntVector; var field_str: ansistring; modifier: double) : ErrorCode;
 function read_file_to_string(filename: ansistring; var ostr: ansistring) : ErrorCode;
 function parse_game_string(var options: ansistring; var config: ConfigStruct) : ErrorCode;
 
@@ -99,14 +101,14 @@ begin
 	end
 end;
 
-function parse_bfield_string(var field: BField; origin: IntVector; var field_str: ansistring) : ErrorCode;
+function parse_bfield_string(var field: BField; origin: IntVector; var field_str: ansistring; modifier: double) : ErrorCode;
 var
 	cannon, king: IntVector;
 begin
-	parse_bfield_string := parse_bfield_string(field, origin, field_str, cannon, king);
+	parse_bfield_string := parse_bfield_string(field, origin, field_str, cannon, king, modifier);
 end;
 
-function parse_bfield_string(var field: BField; origin: IntVector; var field_str: ansistring; var cannon, king: IntVector) : ErrorCode;
+function parse_bfield_string(var field: BField; origin: IntVector; var field_str: ansistring; var cannon, king: IntVector; modifier: double) : ErrorCode;
 var
 	i: integer;
 	len: integer;
@@ -141,7 +143,7 @@ begin
 			el_type := ord(field_str[i]) - ord('0');
 			{ Omit the dot which means `transparent' } 
 			if numeric(field_str[i]) then
-				field.arr[wx, wy].hp := INITIAL_HP[el_type]
+				field.arr[wx, wy].hp := INITIAL_HP[el_type] * modifier
 			else if field_str[i] in ['C', 'K'] then
 				field.arr[wx, wy].hp := 300;
 			if field_str[i] = 'C' then
@@ -265,6 +267,10 @@ var
 	num: integer;
 	i: integer;
 begin
+	config.fort_modifier := 2;
+	config.max_force := 30;
+	config.name[1] := 'Player 1';
+	config.name[2] := 'Player 2';
 	parse_game_string.code := OK;
 	new_list(list);
 	err := parse_keys(list, options);
@@ -278,6 +284,10 @@ begin
 	begin
 		if cur^.v.key = 'bfield_file' then
 			config.bfield_file := cur^.v.value
+		else if cur^.v.key = 'fort_modifier' then
+			config.fort_modifier := StrToFloat(cur^.v.value)
+		else if cur^.v.key = 'max_force' then
+			config.max_force := StrToFloat(cur^.v.value)
 		else if (length(cur^.v.key) >= 8) and
 			AnsiStartsStr('player', cur^.v.key) and (cur^.v.key[7] in ['1', '2']) then
 		begin

@@ -94,6 +94,7 @@ procedure viewport_update_rockets(var iface: ABInterface); forward;
 function sight_marker_pos(iface: ABInterface) : IntVector; forward;
 procedure update_force_bar(var iface: ABInterface); forward;
 procedure update_panel(var iface: ABInterface; w: WhichPanel); forward;
+procedure update_player_bar(var iface: ABInterface; p: pPlayer); forward;
 procedure write_panel(var iface: ABInterface; pan: WhichPanel; place: WhichPlace; s: ansistring); forward;
 procedure read_input(var iface: ABInterface); forward;
 function render_field(var iface: ABInterface; p: IntVector) : CharOnScreen; forward;
@@ -344,7 +345,22 @@ procedure iface_change_player(var iface: ABInterface; var p: Player);
 begin
 	gc_change_player(iface.gc^, p);
 	update_force_bar(iface);
-	{ write panel }
+	update_player_bar(iface, @iface.gc^.player1);
+	update_player_bar(iface, @iface.gc^.player2);
+end;
+
+procedure update_player_bar(var iface: ABInterface; p: pPlayer);
+var
+	pstring: ansistring;
+begin
+	if p = iface.gc^.current_player then
+		pstring := '$4 > $0' + p^.name + '$4 <$0 '
+	else
+		pstring := '   ' + p^.name + '   ';
+	if gc_player_side(iface.gc^, p^) = FortLeft then
+		write_panel(iface, Top, Left, pstring) 
+	else
+		write_panel(iface, Top, Right, pstring);
 end;
 
 { ************************ Panel Section ************************ }
@@ -492,7 +508,6 @@ begin
 		prev := c;
 		c := ReadKey;
 	end;
-	write_panel(iface, Top, Left, IntToStr(i));
 	if prev = chr(0) then
 		case c of
 			AUp: viewport_move_sight(iface, 0.1);
@@ -568,7 +583,13 @@ begin
 	end;
 	bg := (Black << 4);
 	which := trunc(iface.gc^.pc^.field^.arr[field_pos.x, field_pos.y].current_hp);
-	render_field.ch := CH[which div 10];
+	if which = 0 then
+	begin
+		render_field.ch := ' ';
+		render_field.colors := (Black << 4) or White;
+		exit;
+	end;
+	render_field.ch := CH[min(10, (which div 15) + 1)];
 	if field_animated(iface.gc^.pc^, field_pos.x, field_pos.y) and
 		(iface.gc^.pc^.field^.arr[field_pos.x, field_pos.y].hp < 20) then
 		render_field.colors := bg or BurningColors[random(6)]
