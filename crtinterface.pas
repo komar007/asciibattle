@@ -58,11 +58,11 @@ type
 
 procedure new_abinterface(var iface: ABInterface; gc: pGameController);
 procedure iface_step(var iface: ABInterface);
-procedure iface_change_player(var iface: ABInterface; var p: Player);
+procedure iface_change_player(var iface: ABInterface; p: integer);
 
 
 implementation
-uses StaticConfig, SysUtils,
+uses StaticConfig, SysUtils, BattleField,
 {$ifdef LINUX}
 	termio, BaseUnix,
 {$endif}
@@ -94,7 +94,7 @@ procedure viewport_update_rockets(var iface: ABInterface); forward;
 function sight_marker_pos(iface: ABInterface) : IntVector; forward;
 procedure update_force_bar(var iface: ABInterface); forward;
 procedure update_panel(var iface: ABInterface; w: WhichPanel); forward;
-procedure update_player_bar(var iface: ABInterface; p: pPlayer); forward;
+procedure update_player_bar(var iface: ABInterface; p: integer); forward;
 procedure write_panel(var iface: ABInterface; pan: WhichPanel; place: WhichPlace; s: ansistring); forward;
 procedure read_input(var iface: ABInterface); forward;
 function render_field(var iface: ABInterface; p: IntVector) : CharOnScreen; forward;
@@ -341,23 +341,26 @@ begin
 	read_input(iface);
 end;
 
-procedure iface_change_player(var iface: ABInterface; var p: Player);
+procedure iface_change_player(var iface: ABInterface; p: integer);
 begin
 	gc_change_player(iface.gc^, p);
 	update_force_bar(iface);
-	update_player_bar(iface, @iface.gc^.player1);
-	update_player_bar(iface, @iface.gc^.player2);
+	update_player_bar(iface, 1);
+	update_player_bar(iface, 2);
 end;
 
-procedure update_player_bar(var iface: ABInterface; p: pPlayer);
+procedure update_player_bar(var iface: ABInterface; p: integer);
 var
 	pstring: ansistring;
+	pl: pPlayer;
 begin
-	if p = iface.gc^.current_player then
-		pstring := '$4 > $0' + p^.name + '$4 <$0 '
+	pl := @iface.gc^.player[p];
+	pstring := pl^.name + ' (' + IntToStr(gc_player_life(iface.gc^, p)) + ')';
+	if pl = iface.gc^.current_player then
+		pstring := '$4 > $0' + pstring + '$4 <$0 '
 	else
-		pstring := '   ' + p^.name + '   ';
-	if gc_player_side(iface.gc^, p^) = FortLeft then
+		pstring := '   ' + pstring + '   ';
+	if gc_player_side(iface.gc^, pl^) = FortLeft then
 		write_panel(iface, Top, Left, pstring) 
 	else
 		write_panel(iface, Top, Right, pstring);
@@ -536,6 +539,7 @@ var
 	which: integer;
 	bg: shortint;
 	width, height: integer;
+	f: BFieldElement;
 begin
 	width := iface.gc^.pc^.field^.width;
 	height := iface.gc^.pc^.field^.height;
@@ -566,23 +570,21 @@ begin
 		render_field.colors := (Black << 4) or DarkGray;
 		exit;
 	end;
-	if iface.gc^.pc^.field^.arr[field_pos.x, field_pos.y].current_hp <> 0 then
+	f := iface.gc^.pc^.field^.arr[field_pos.x, field_pos.y];
+	if (field_pos = iface.gc^.player[1].cannon) or (field_pos = iface.gc^.player[2].cannon) then
 	begin
-		if (field_pos = iface.gc^.player1.cannon) or (field_pos = iface.gc^.player2.cannon) then
-		begin
-			render_field.ch := 'C';
-			render_field.colors := (Red << 4) or White;
-			exit;
-		end;
-		if (field_pos = iface.gc^.player1.king) or (field_pos = iface.gc^.player2.king) then
-		begin
-			render_field.ch := 'K';
-			render_field.colors := (Black << 4) or Blue;
-			exit;
-		end;
+		render_field.ch := 'C';
+		render_field.colors := (Red << 4) or White;
+		exit;
+	end;
+	if ((field_pos = iface.gc^.player[1].king) or (field_pos = iface.gc^.player[2].king)) and (f.current_hp <> 0) then
+	begin
+		render_field.ch := 'K';
+		render_field.colors := (Black << 4) or Blue;
+		exit;
 	end;
 	bg := (Black << 4);
-	which := trunc(iface.gc^.pc^.field^.arr[field_pos.x, field_pos.y].current_hp);
+	which := trunc(f.current_hp);
 	if which = 0 then
 	begin
 		render_field.ch := ' ';
@@ -590,9 +592,10 @@ begin
 		exit;
 	end;
 	render_field.ch := CH[min(10, (which div 15) + 1)];
-	if field_animated(iface.gc^.pc^, field_pos.x, field_pos.y) and
-		(iface.gc^.pc^.field^.arr[field_pos.x, field_pos.y].hp < 20) then
+	if field_animated(iface.gc^.pc^, field_pos.x, field_pos.y) and (f.hp < 20) then
 		render_field.colors := bg or BurningColors[random(6)]
+	else if f.owner > 0 then
+		render_field.colors := bg or iface.gc^.player[f.owner].color
 	else
 	begin
 		if which < 9 then

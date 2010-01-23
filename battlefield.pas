@@ -8,6 +8,7 @@ type
 		current_hp: double;
 		previous_hp: double;
 		hp_speed: double;
+		owner: integer;
 	end;
 
 	BField = record

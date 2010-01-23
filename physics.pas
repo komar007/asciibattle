@@ -9,6 +9,7 @@ type
 		rockets: RocketList;
 		animlist: IntVectorList;
 		time: double;
+		wind: double;
 	end;
 
 	pPhysicsController = ^PhysicsController;
@@ -31,6 +32,7 @@ uses math;
 procedure new_pc(var p: PhysicsController; bf: pBField);
 begin
 	p.time := 0.0;
+	p.wind := 0.0;
 	p.field := bf;
 	new_list(p.rockets);
 	new_list(p.animlist);
@@ -83,11 +85,11 @@ begin
 	end;
 end;
 
-procedure rocket_step(var r: Rocket; delta: double);
+procedure rocket_step(var p: PhysicsController; var r: Rocket; delta: double);
 begin
 	r.oldpos := r.position;
 	r.velocity := r.velocity + (r.acceleration * delta);
-	r.position := r.position + (r.velocity * delta);
+	r.position := r.position + ((r.velocity + v(p.wind, 0)) * delta);
 end;
 
 procedure rockets_step(var p: PhysicsController; delta: double);
@@ -98,7 +100,7 @@ begin
 	cur := p.rockets.head;
 	while cur <> nil do
 	begin
-		rocket_step(cur^.v, delta);
+		rocket_step(p, cur^.v, delta);
 		t := cur;
 		cur := cur^.next;
 		{ If the rocket was scheduled for removal in the previous iteration... }

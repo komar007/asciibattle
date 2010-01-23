@@ -16,15 +16,17 @@ type
 		bfield_file: ansistring;
 		fort_modifier: double;
 		max_force: double;
+		max_wind: double;
 		fort_file: array [1..2] of ansistring;
 		fort_pos: array [1..2] of IntVector;
 		name: array[1..2] of ansistring;
+		color: array[1..2] of shortint;
 	end;
 
 function parse_bfield_dimensions(var field_str: ansistring; var w, h: integer; var nextpos: integer) : ErrorCode;
 function parse_bfield_dimensions(var field_str: ansistring; var w, h: integer) : ErrorCode;
-function parse_bfield_string(var field: BField; origin: IntVector; var field_str: ansistring; var cannon, king: IntVector; modifier: double) : ErrorCode;
-function parse_bfield_string(var field: BField; origin: IntVector; var field_str: ansistring; modifier: double) : ErrorCode;
+function parse_bfield_string(var field: BField; origin: IntVector; var field_str: ansistring; var cannon, king: IntVector; modifier: double; owner: integer) : ErrorCode;
+function parse_bfield_string(var field: BField; origin: IntVector; var field_str: ansistring; modifier: double; owner: integer) : ErrorCode;
 function read_file_to_string(filename: ansistring; var ostr: ansistring) : ErrorCode;
 function parse_game_string(var options: ansistring; var config: ConfigStruct) : ErrorCode;
 
@@ -101,14 +103,14 @@ begin
 	end
 end;
 
-function parse_bfield_string(var field: BField; origin: IntVector; var field_str: ansistring; modifier: double) : ErrorCode;
+function parse_bfield_string(var field: BField; origin: IntVector; var field_str: ansistring; modifier: double; owner: integer) : ErrorCode;
 var
 	cannon, king: IntVector;
 begin
-	parse_bfield_string := parse_bfield_string(field, origin, field_str, cannon, king, modifier);
+	parse_bfield_string := parse_bfield_string(field, origin, field_str, cannon, king, modifier, owner);
 end;
 
-function parse_bfield_string(var field: BField; origin: IntVector; var field_str: ansistring; var cannon, king: IntVector; modifier: double) : ErrorCode;
+function parse_bfield_string(var field: BField; origin: IntVector; var field_str: ansistring; var cannon, king: IntVector; modifier: double; owner: integer) : ErrorCode;
 var
 	i: integer;
 	len: integer;
@@ -140,6 +142,7 @@ begin
 		begin
 			wx := x + origin.x;
 			wy := y + origin.y;
+			field.arr[wx, wy].owner := owner;
 			el_type := ord(field_str[i]) - ord('0');
 			{ Omit the dot which means `transparent' } 
 			if numeric(field_str[i]) then
@@ -269,8 +272,11 @@ var
 begin
 	config.fort_modifier := 2;
 	config.max_force := 30;
+	config.max_wind := 4;
 	config.name[1] := 'Player 1';
 	config.name[2] := 'Player 2';
+	config.color[1] := 2;  {Green}
+	config.color[2] := 14; {Yellow}
 	parse_game_string.code := OK;
 	new_list(list);
 	err := parse_keys(list, options);
@@ -288,6 +294,8 @@ begin
 			config.fort_modifier := StrToFloat(cur^.v.value)
 		else if cur^.v.key = 'max_force' then
 			config.max_force := StrToFloat(cur^.v.value)
+		else if cur^.v.key = 'max_wind' then
+			config.max_wind := StrToFloat(cur^.v.value)
 		else if (length(cur^.v.key) >= 8) and
 			AnsiStartsStr('player', cur^.v.key) and (cur^.v.key[7] in ['1', '2']) then
 		begin
@@ -302,6 +310,8 @@ begin
 				i := parse_num(cur^.v.value, 1, config.fort_pos[num].x);
 				parse_num(cur^.v.value, i, config.fort_pos[num].y);
 			end
+			else if what = 'color' then
+				config.color[num] := StrToInt(cur^.v.value)
 			else
 			begin
 				parse_game_string.code := INVALID_KEY;
