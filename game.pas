@@ -9,7 +9,7 @@ type
 	Side = (FortLeft, FortRight);
 
 	Player = record
-		base: IntVector;
+		king: IntVector;
 		cannon: IntVector;
 		name: ansistring;
 		{ Used to remember settings in 2 player turn-based mode }
@@ -25,7 +25,7 @@ type
 	end;
 	pGameController = ^GameController;
 
-procedure new_player(var p: Player; name: ansistring; b, c: IntVector; max_force: double);
+procedure new_player(var p: Player; name: ansistring; k, c: IntVector; max_force: double);
 procedure new_gc(var g: GameController; bf: pBField);
 procedure gc_shoot(var g: GameController);
 procedure gc_change_player(var g: GameController; var p: Player);
@@ -37,10 +37,10 @@ implementation
 uses Config;
 
 
-procedure new_player(var p: Player; name: ansistring; b, c: IntVector; max_force: double);
+procedure new_player(var p: Player; name: ansistring; k, c: IntVector; max_force: double);
 begin
 	p.name := name;
-	p.base := b;
+	p.king := k;
 	p.cannon := c;
 	p.max_force := max_force;
 end;
@@ -60,7 +60,7 @@ var
 	whereshoot: IntVector;
 	force, angle: double;
 begin
-	whereshoot := g.current_player^.cannon - iv(0, -1);
+	whereshoot := g.current_player^.cannon - iv(0, 1);
 	force := g.current_player^.force;
 	angle := g.current_player^.angle;
 

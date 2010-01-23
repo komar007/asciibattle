@@ -51,11 +51,12 @@ begin
 	end;
 end;
 
-procedure read_fort(var bf: BField; var conf: ConfigStruct; num: integer);
+procedure read_fort(var gc: GameController; var conf: ConfigStruct; num: integer);
 var
 	filename: ansistring;
 	err: ErrorCode;
 	map: ansistring;
+	cannon, king: IntVector;
 begin
 	filename := config_filename(CFORT, conf.fort_file[num]);
 	err := read_file_to_string(filename, map);
@@ -64,11 +65,21 @@ begin
 		writeln('Error: no such fort (file: ', filename, ')');
 		halt;
 	end;
-	err := parse_bfield_string(bf, conf.fort_pos[num], map);
+	err := parse_bfield_string(gc.pc^.field^, conf.fort_pos[num], map, cannon, king);
 	if err.code <> OK then
 	begin
 		writeln('Error reading fort file: ', err.msg, ' (file: ', filename, ')');
 		halt;
+	end;
+	if num = 1 then
+	begin
+		gc.player1.cannon := cannon + conf.fort_pos[num];
+		gc.player1.king := king + conf.fort_pos[num];
+	end
+	else
+	begin
+		gc.player2.cannon := cannon + conf.fort_pos[num];
+		gc.player2.king := king + conf.fort_pos[num];
 	end;
 end;
 
@@ -114,15 +125,12 @@ begin
 		writeln('Error reading map file: ', err.msg, ' (file: ', filename, ')');
 		halt;
 	end;
-
-	read_fort(bf, conf, 1); 
-	read_fort(bf, conf, 2);
-
-	gc.player1.cannon := iv(5, 15);
-	gc.player1.max_force := 30;
-	gc.player2.cannon := iv(60, 12);
-	gc.player2.max_force := 30;
 	new_gc(gc, @bf);
+	gc.player1.max_force := 30;
+	gc.player2.max_force := 30;
+	read_fort(gc, conf, 1); 
+	read_fort(gc, conf, 2);
+
 	gc_change_player(gc, gc.player1);
 	new_abinterface(iface, @gc);
 	turn := 0;
@@ -137,12 +145,12 @@ begin
 			if (turn mod 2) = 0 then
 			begin
 				gc_shoot(gc);
-				gc_change_player(gc, gc.player2);
+				iface_change_player(iface, gc.player2);
 			end
 			else
 			begin
 				gc_shoot(gc);
-				gc_change_player(gc, gc.player1);
+				iface_change_player(iface, gc.player1);
 			end;
 			iface.shooting := False;
 			inc(turn);

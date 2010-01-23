@@ -136,21 +136,21 @@ begin
 	begin
 		if numeric(field_str[i]) or (field_str[i] in ['.', 'C', 'K']) then
 		begin
+			wx := x + origin.x;
+			wy := y + origin.y;
+			el_type := ord(field_str[i]) - ord('0');
 			{ Omit the dot which means `transparent' } 
 			if numeric(field_str[i]) then
-			begin
-				wx := x + origin.x;
-				wy := y + origin.y;
-				el_type := ord(field_str[i]) - ord('0');
-				field.arr[wx, wy].hp := INITIAL_HP[el_type];
-				field.arr[wx, wy].current_hp := field.arr[wx, wy].hp;
-				field.arr[wx, wy].previous_hp := field.arr[wx, wy].hp;
-				field.arr[wx, wy].hp_speed := 0;
-			end
-			else if field_str[i] = 'C' then
-				cannon := iv(x, y)
-			else if field_str[i] = 'K' then
+				field.arr[wx, wy].hp := INITIAL_HP[el_type]
+			else if field_str[i] in ['C', 'K'] then
+				field.arr[wx, wy].hp := 300;
+			if field_str[i] = 'C' then
+				cannon := iv(x, y);
+			if field_str[i] = 'K' then
 				king := iv(x, y);
+			field.arr[wx, wy].current_hp := field.arr[wx, wy].hp;
+			field.arr[wx, wy].previous_hp := field.arr[wx, wy].hp;
+			field.arr[wx, wy].hp_speed := 0;
 			inc(x);
 			if not (x < w) then
 			begin

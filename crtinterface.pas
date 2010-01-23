@@ -58,6 +58,7 @@ type
 
 procedure new_abinterface(var iface: ABInterface; gc: pGameController);
 procedure iface_step(var iface: ABInterface);
+procedure iface_change_player(var iface: ABInterface; var p: Player);
 
 
 implementation
@@ -339,6 +340,13 @@ begin
 	read_input(iface);
 end;
 
+procedure iface_change_player(var iface: ABInterface; var p: Player);
+begin
+	gc_change_player(iface.gc^, p);
+	update_force_bar(iface);
+	{ write panel }
+end;
+
 { ************************ Panel Section ************************ }
 
 function template_width(t: ansistring) : integer;
@@ -518,6 +526,12 @@ begin
 	height := iface.gc^.pc^.field^.height;
 	field_pos := viewport_to_field_position(iface.view, p);
 
+	if field_pos = sight_marker_pos(iface) then
+	begin
+		render_field.ch := '+';
+		render_field.colors := (Black << 4) or Blue;
+		exit;
+	end;
 	if (field_pos.x < -1) or (field_pos.x > width) or 
 		(field_pos.y < -1) or (field_pos.y > height) then
 	begin
@@ -525,16 +539,10 @@ begin
 		render_field.colors := (Black << 4) or White;
 		exit;
 	end;
-	if field_pos = sight_marker_pos(iface) then
-	begin
-		render_field.ch := '+';
-		render_field.colors := (Black << 4) or Blue;
-		exit;
-	end;
 	if ((field_pos.x = -1) or (field_pos.x = width) or (field_pos.y = height)) then
 	begin
-		render_field.ch := ' ';
-		render_field.colors := (Magenta << 4) or White;
+		render_field.ch := '%';
+		render_field.colors := (Black << 4) or Magenta;
 		exit;
 	end;
 	if (field_pos.y = -1) then
@@ -542,6 +550,21 @@ begin
 		render_field.ch := '-';
 		render_field.colors := (Black << 4) or DarkGray;
 		exit;
+	end;
+	if iface.gc^.pc^.field^.arr[field_pos.x, field_pos.y].current_hp <> 0 then
+	begin
+		if (field_pos = iface.gc^.player1.cannon) or (field_pos = iface.gc^.player2.cannon) then
+		begin
+			render_field.ch := 'C';
+			render_field.colors := (Red << 4) or White;
+			exit;
+		end;
+		if (field_pos = iface.gc^.player1.king) or (field_pos = iface.gc^.player2.king) then
+		begin
+			render_field.ch := 'K';
+			render_field.colors := (Black << 4) or Blue;
+			exit;
+		end;
 	end;
 	bg := (Black << 4);
 	which := trunc(iface.gc^.pc^.field^.arr[field_pos.x, field_pos.y].current_hp);
