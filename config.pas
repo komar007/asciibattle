@@ -149,7 +149,10 @@ begin
 		begin
 			wx := x + origin.x;
 			wy := y + origin.y;
-			field.arr[wx, wy].owner := owner;
+			if field_str[i] <> '.' then
+				field.arr[wx, wy].owner := owner
+			else
+				field.arr[wx, wy].owner := 0;
 			el_type := ord(field_str[i]) - ord('0');
 			{ Omit the dot which means `transparent' } 
 			if numeric(field_str[i]) then

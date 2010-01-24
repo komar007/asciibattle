@@ -75,7 +75,10 @@ begin
 				{ Update animation properties }
 				p.field^.arr[i, j].hp_speed := max(MIN_HP_SPEED,
 					p.field^.arr[i, j].hp_speed + INITIAL_HP_SPEED / (d*d));
-				delta_hp := min(force, force / (d*d));
+				if force >= 0 then
+					delta_hp := min(force, force / (d*d));
+				else
+					delta_hp := max(force, force / (d*d));
 				p.field^.arr[i, j].hp := max(0, p.field^.arr[i, j].hp - delta_hp);
 			end
 		end;
