@@ -177,7 +177,7 @@ end;
 
 function gc_player_has_weapon(g: GameController; p: integer; w: integer) : boolean;
 begin
-	gc_player_has_weapon := (g.player[p].equipment[w].num > 0) or (g.player[p].equipment[w].num = -1);
+	gc_player_has_weapon := (w <> 0) and (g.player[p].equipment[w].num > 0) or (g.player[p].equipment[w].num = -1);
 end;
 
 function gc_field_is_king(var g: GameController; v: IntVector) : boolean;

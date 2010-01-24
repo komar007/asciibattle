@@ -332,10 +332,22 @@ end;
 
 { Changes the player and updates what needs to be updated in such a case }
 procedure iface_change_player(var iface: ABInterface; p: integer);
+var
+	cp: pPlayer;
 begin
 	gc_change_player(iface.gc^, p);
+	cp := @iface.gc^.player[iface.gc^.current_player];
 	iface.force_bar_needs_update := True;
 	iface.player_bar_needs_update := True;
+	if not gc_player_has_weapon(iface.gc^, iface.gc^.current_player, cp^.current_weapon) then
+	begin
+		cp^.current_weapon := 1;
+		while (cp^.current_weapon < 9) and
+			not gc_player_has_weapon(iface.gc^, iface.gc^.current_player, cp^.current_weapon) do
+			inc(cp^.current_weapon);
+		if not gc_player_has_weapon(iface.gc^, iface.gc^.current_player, cp^.current_weapon) then
+			cp^.current_weapon := 0;
+	end;
 	iface.weapon_bar_needs_update := True;
 end;
 
@@ -496,12 +508,17 @@ var
 begin
 	current_player := @iface.gc^.player[iface.gc^.current_player];
 	w := @current_player^.equipment[current_player^.current_weapon];
-	s := '[$1' + IntToStr(current_player^.current_weapon) + '$0] ' + w^.name;
-	s := s + ' r:' + FloatToStr(w^.exp_radius) + ' $4f:' + FloatToStr(w^.exp_force) + '$0';
-	if w^.num = -1 then
-		s := s + ' (inf)'
+	if gc_player_has_weapon(iface.gc^, iface.gc^.current_player, current_player^.current_weapon) then
+	begin
+		s := '[$1' + IntToStr(current_player^.current_weapon) + '$0] ' + w^.name;
+		s := s + ' r:' + FloatToStr(w^.exp_radius) + ' $4f:' + FloatToStr(w^.exp_force) + '$0';
+		if w^.num = -1 then
+			s := s + ' (inf)'
+		else
+			s := s + ' (' + IntToStr(w^.num) + ')';
+	end
 	else
-		s := s + ' (' + IntToStr(w^.num) + ')';
+		s := 'No weapon :(';
 	write_panel(iface, Bottom, Right, s);
 	iface.weapon_bar_needs_update := False;
 end;
