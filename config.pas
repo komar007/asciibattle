@@ -313,7 +313,7 @@ begin
 	cur := list.head;
 	while cur <> nil do
 	begin
-		if cur^.v.key = 'bfield_file' then
+		if cur^.v.key = 'map_file' then
 			config.bfield_file := cur^.v.value
 		else if cur^.v.key = 'fort_modifier' then
 			config.fort_modifier := StrToFloat(cur^.v.value)

@@ -1,4 +1,4 @@
-bfield_file          = field
+map_file             = title
 
 player1_name         = komar
 player1_fort_file    = exl

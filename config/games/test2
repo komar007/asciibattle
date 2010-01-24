@@ -1,4 +1,4 @@
-bfield_file          = field2
+map_file          = field2
 fort_modifier        = 1.5
 
 player1_name         = komar
