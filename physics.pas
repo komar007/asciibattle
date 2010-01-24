@@ -22,7 +22,7 @@ type
 procedure new_pc(var p: PhysicsController; bf: pBField);
 procedure pc_step(var p: PhysicsController; delta: double);
 procedure pc_add_rocket(var p: PhysicsController; r: Rocket);
-function field_animated(var p: PhysicsController; x, y: integer) : boolean;
+function field_animated(var p: PhysicsController; v: IntVector) : boolean;
 
 
 implementation
@@ -48,11 +48,11 @@ begin
 		(pos.y < p.field^.height);
 end;
 
-function field_animated(var p: PhysicsController; x, y: integer) : boolean;
+function field_animated(var p: PhysicsController; v: IntVector) : boolean;
 begin
 	{ If hp and current_hp are not equal, the field has a state of "during animation".
 	  current_hp is always > than hp until the variables are equal and the animation stops. }
-	field_animated := p.field^.arr[x, y].hp <> p.field^.arr[x, y].current_hp;
+	field_animated := p.field^.arr[v.x, v.y].hp <> p.field^.arr[v.x, v.y].current_hp;
 end;
 
 procedure explode(var p: PhysicsController; var r: Rocket);
@@ -73,7 +73,7 @@ begin
 			if d <= r.exp_radius then
 			begin
 				{ if a field is not being animated }
-				if not field_animated(p, i, j) then
+				if not field_animated(p, iv(i, j)) then
 					push_front(p.animlist, iv(i, j));
 				{ Update animation properties }
 				p.field^.arr[i, j].hp_speed := max(MIN_HP_SPEED,
@@ -142,7 +142,10 @@ begin
 		begin
 			{ Animate field }
 			field^.previous_hp := field^.current_hp;
-			field^.current_hp := max(field^.hp, field^.current_hp - field^.hp_speed * delta);
+			if field^.current_hp < field^.hp then
+				field^.current_hp := min(field^.hp, field^.current_hp + field^.hp_speed * delta)
+			else
+				field^.current_hp := max(field^.hp, field^.current_hp - field^.hp_speed * delta);
 		end;
 	end;
 end;

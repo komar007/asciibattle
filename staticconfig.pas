@@ -9,7 +9,7 @@ const
 	CH: array [0..10] of char = (' ','.',',',':','&','%','#','$','@','O','G');
 	FIELD_WIDTH = 0.2;
 	FIELD_HEIGHT = 0.39;
-	WIND_FLUCT = 0.02;
+	WIND_FLUCT = 0.01;
 	WIND_CHANGE_TIME = 2;
 	INITIAL_KING_HP = 300;
 	SIGHT_LEN = 2;

@@ -96,7 +96,7 @@ function sight_marker_pos(iface: ABInterface) : IntVector; forward;
 procedure update_force_bar(var iface: ABInterface); forward;
 procedure update_panel(var iface: ABInterface; w: WhichPanel); forward;
 procedure update_player_bar(var iface: ABInterface; p: integer); forward;
-procedure update_wind_bar(var iface: ABInterface); forward;
+procedure update_wind_bar(var iface: ABInterface; force: boolean); forward;
 procedure write_panel(var iface: ABInterface; pan: WhichPanel; place: WhichPlace; s: ansistring); forward;
 procedure read_input(var iface: ABInterface); forward;
 function render_field(var iface: ABInterface; p: IntVector) : CharOnScreen; forward;
@@ -306,6 +306,7 @@ begin
 	revert_standard_colors;
 	{ Update the panels }
 	update_force_bar(iface);
+	update_wind_bar(iface, True);
 	update_panel(iface, Top);
 	update_panel(iface, Bottom);
 	viewport_redraw(iface);
@@ -314,7 +315,7 @@ end;
 
 procedure iface_update(var iface: ABInterface);
 begin
-	update_wind_bar(iface);
+	update_wind_bar(iface, False);
 	revert_standard_colors;
 	if iface.tpanel_needs_update then
 		update_panel(iface, Top);
@@ -323,7 +324,7 @@ begin
 	viewport_update(iface);
 end;
 
-procedure update_wind_bar(var iface: ABInterface);
+procedure update_wind_bar(var iface: ABInterface; force: boolean);
 var
 	wind: integer;
 	maxl: integer;
@@ -331,8 +332,11 @@ var
 	s: ansistring;
 begin
 	maxl := iface.width div 8;
-	wind := trunc(iface.gc^.pc^.wind / iface.gc^.max_wind * maxl);
-	if wind <> iface.wind then
+	if abs(iface.gc^.max_wind) = 0 then
+		wind := 0
+	else
+		wind := trunc(iface.gc^.pc^.wind / iface.gc^.max_wind * maxl);
+	if (wind <> iface.wind) or force then
 	begin
 		s := 'Wind: ';
 		if wind > 0 then
@@ -638,7 +642,7 @@ begin
 		exit;
 	end;
 	render_field.ch := CH[min(10, (which div 15) + 1)];
-	if field_animated(iface.gc^.pc^, field_pos.x, field_pos.y) and (f.hp < 20) then
+	if field_animated(iface.gc^.pc^, field_pos) and (f.hp < 20) and (f.hp < f.current_hp) then
 		render_field.colors := bg or BurningColors[random(6)]
 	else if f.owner > 0 then
 		render_field.colors := bg or iface.gc^.player[f.owner].color
