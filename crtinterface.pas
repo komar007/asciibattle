@@ -54,6 +54,7 @@ type
 		paneltl, paneltc, paneltr, panelbl, panelbc, panelbr: ansistring;
 		exitting, shooting: boolean;
 		tpanel_needs_update, bpanel_needs_update: boolean;
+		player_bar_needs_update: boolean;
 		wind: integer;
 	end;
 
@@ -199,6 +200,8 @@ begin
 	begin
 		pos_viewport := field_to_viewport_position(iface.view, cur^.v);
 		c := render_field(iface, pos_viewport);
+		if (cur^.v = iface.gc^.player[1].king) or (cur^.v = iface.gc^.player[2].king) then
+			iface.player_bar_needs_update := True;
 		viewport_putchar(iface.view, pos_viewport, c, False);
 		cur := cur^.next;
 	end;
@@ -297,6 +300,7 @@ begin
 	iface.shooting := False;
 	iface.tpanel_needs_update := True;
 	iface.bpanel_needs_update := True;
+	iface.player_bar_needs_update := True;
 	iface.view.sight_marker := sight_marker_pos(iface);
 	iface.wind := 0;
 end;
@@ -317,6 +321,12 @@ procedure iface_update(var iface: ABInterface);
 begin
 	update_wind_bar(iface, False);
 	revert_standard_colors;
+	if iface.player_bar_needs_update then
+	begin
+		update_player_bar(iface, 1);
+		update_player_bar(iface, 2);
+		iface.player_bar_needs_update := False;
+	end;
 	if iface.tpanel_needs_update then
 		update_panel(iface, Top);
 	if iface.bpanel_needs_update then
