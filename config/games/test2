@@ -1,0 +1,12 @@
+bfield_file          = field2
+fort_modifier        = 1.5
+
+player1_name         = komar
+player1_fort_file    = f2l
+player1_fort_pos     = 0 31 
+player1_color        = 3
+
+player2_name         = kupka
+player2_fort_file    = f2r
+player2_fort_pos     = 155 32 
+player2_color        = 6

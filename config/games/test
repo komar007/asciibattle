@@ -1,0 +1,9 @@
+bfield_file          = field
+
+player1_name         = komar
+player1_fort_file    = exl
+player1_fort_pos     = 8 11 
+
+player2_name         = kupka
+player2_fort_file    = exr
+player2_fort_pos     = 66 11 
