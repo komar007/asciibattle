@@ -127,10 +127,6 @@ begin
 				explode(p, t^.v.position, t^.v.exp_radius, t^.v.exp_force);
 				t^.v.removed := true; { Schedule the rocket to be removed in the next step }
 			end
-			else if t^.v.drilling then
-			begin
-				explode(p, fc(collision), min(FIELD_WIDTH, FIELD_HEIGHT), 1000);
-			end
 			else if not t^.v.drilling then
 			begin
 				t^.v.drilling := True;
@@ -138,7 +134,12 @@ begin
 			end;
 		end
 		else if not pc_rocket_in_bfield(p, t^.v) then
-			t^.v.removed := true; { Schedule the rocket to be removed in the next step }
+			t^.v.removed := true { Schedule the rocket to be removed in the next step }
+		else if t^.v.drilling then
+		begin
+			explode(p, t^.v.position, t^.v.exp_radius, t^.v.exp_force);
+			t^.v.removed := true;
+		end;
 	end;
 end;
 

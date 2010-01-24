@@ -101,7 +101,7 @@ begin
 		v(0, 9.81),                             { gravity }
 		1.5,                                    { explosion radius }
 		30,                                     { explosion force }
-		0                                       { drill length }
+		3                                       { drill length }
 	);
 	pc_add_rocket(g.pc^, r);
 end;
