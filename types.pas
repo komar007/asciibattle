@@ -14,7 +14,14 @@ type
 		removed: boolean;
 		exp_radius: double;
 		exp_force: double;
+		{ Used for player's equipment }
+		name: ansistring;
+		amount: integer;
+		num: integer;
 	end;
+	pRocket = ^Rocket;
+
+	Equip = array[1..9] of Rocket;
 
 	ConfigPair = record
 		key: ansistring;

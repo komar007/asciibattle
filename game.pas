@@ -1,7 +1,7 @@
 unit Game;
 
 interface
-uses Physics, Geometry, BattleField;
+uses Physics, Geometry, BattleField, Types;
 
 type
 	Side = (FortLeft, FortRight);
@@ -13,6 +13,8 @@ type
 		max_force: double;
 		angle, force: double;
 		color: shortint;
+		equipment: Equip;
+		current_weapon: integer;
 	end;
 	pPlayer = ^Player;
 
@@ -30,28 +32,31 @@ type
 	end;
 	pGameController = ^GameController;
 
-procedure new_player(var p: Player; name: ansistring; color: shortint; max_force: double);
+procedure new_player(var p: Player; name: ansistring; color: shortint; equipment: Equip; max_force: double);
 procedure new_gc(var g: GameController; bf: pBField; var p1, p2: Player; max_wind, max_force: double);
 procedure gc_shoot(var g: GameController);
 procedure gc_change_player(var g: GameController; p: integer);
 procedure gc_step(var g: GameController; delta: double);
 function gc_player_side(var g: GameController; p: integer) : Side;
 function gc_player_life(var g: GameController; p: integer) : integer;
+function gc_player_has_weapon(g: GameController; p: integer; w: integer) : boolean;
 function gc_field_is_king(var g: GameController; v: IntVector) : boolean;
 
 
 implementation
-uses Types, Config, StaticConfig;
+uses Config, StaticConfig;
 
 
 procedure set_player_initial_angle(var g: GameController; p: integer); forward;
 
-procedure new_player(var p: Player; name: ansistring; color: shortint; max_force: double);
+procedure new_player(var p: Player; name: ansistring; color: shortint; equipment: Equip; max_force: double);
 begin
 	p.name := name;
 	p.color := color;
 	p.max_force := max_force;
 	p.force := max_force / 2;
+	p.equipment := equipment;
+	p.current_weapon := 1;
 end;
 
 procedure new_gc(var g: GameController; bf: pBField; var p1, p2: Player; max_wind, max_force: double);
@@ -87,23 +92,35 @@ procedure gc_shoot(var g: GameController);
 var
 	r: Rocket;
 	whereshoot: IntVector;
-	force, angle: double;
+	force, angle, bforce, bangle: double;
 	current_player: pPlayer;
+	current_weapon: pRocket;
+	i: integer;
 begin
-	current_player := @g.player[g.current_player];
-	whereshoot := current_player^.cannon - iv(0, 1);
-	force := current_player^.force;
-	angle := current_player^.angle;
-
-	new_rocket(r,
-		fc(whereshoot),                         { launch position (1 above cannon) }
-		force * v(cos(angle), sin(angle)),  	{ initial velocity }
-		v(0, 9.81),                             { gravity }
-		1.5,                                    { explosion radius }
-		30,                                     { explosion force }
-		3                                       { drill length }
-	);
-	pc_add_rocket(g.pc^, r);
+	if gc_player_has_weapon(g, g.current_player, g.player[g.current_player].current_weapon) then
+	begin
+		current_player := @g.player[g.current_player];
+		current_weapon := @current_player^.equipment[current_player^.current_weapon];
+		whereshoot := current_player^.cannon - iv(0, 1);
+		bforce := current_player^.force; force := bforce;
+		bangle := current_player^.angle; angle := bangle;
+		for i := 1 to current_weapon^.amount do
+		begin
+			new_rocket(r,
+				fc(whereshoot),                         { launch position (1 above cannon) }
+				force * v(cos(angle), sin(angle)),  	{ initial velocity }
+				v(0, 9.81),                             { gravity }
+				current_weapon^.exp_radius,             { explosion radius }
+				current_weapon^.exp_force,              { explosion force }
+				current_weapon^.drill_len               { drill length }
+			);
+			pc_add_rocket(g.pc^, r);
+			angle := bangle + random(1000) / 4000.0 - 0.25;
+			force := bforce + random(1000) / 250.0 - 2
+		end;
+		if current_weapon^.num <> -1 then
+			dec(current_weapon^.num);
+	end;
 end;
 
 procedure gc_change_player(var g: GameController; p: integer);
@@ -156,6 +173,11 @@ var
 begin
 	k := g.player[p].king;
 	gc_player_life := trunc(g.pc^.field^.arr[k.x, k.y].hp);
+end;
+
+function gc_player_has_weapon(g: GameController; p: integer; w: integer) : boolean;
+begin
+	gc_player_has_weapon := (g.player[p].equipment[w].num > 0) or (g.player[p].equipment[w].num = -1);
 end;
 
 function gc_field_is_king(var g: GameController; v: IntVector) : boolean;

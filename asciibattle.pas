@@ -119,8 +119,8 @@ begin
 		writeln('Error reading map file: ', err.msg, ' (file: ', filename, ')');
 		halt;
 	end;
-	new_player(p1, conf.name[1], conf.color[1], conf.max_force);
-	new_player(p2, conf.name[2], conf.color[2], conf.max_force);
+	new_player(p1, conf.name[1], conf.color[1], conf.equipment, conf.max_force);
+	new_player(p2, conf.name[2], conf.color[2], conf.equipment, conf.max_force);
 	read_fort(bf, conf, p1, 1); 
 	read_fort(bf, conf, p2, 2);
 	new_gc(gc, @bf, p1, p2, conf.max_wind, conf.max_force);
@@ -134,10 +134,13 @@ begin
 			halt;
 		if iface.shooting then
 		begin
-			gc_shoot(gc);
-			iface_change_player(iface, (turn mod 2) + 1);
+			if gc_player_has_weapon(gc, gc.current_player, gc.player[gc.current_player].current_weapon) then
+			begin
+				gc_shoot(gc);
+				iface_change_player(iface, (turn mod 2) + 1);
+				inc(turn);
+			end;
 			iface.shooting := False;
-			inc(turn);
 		end;
 		if gc.player1_won then
 		begin

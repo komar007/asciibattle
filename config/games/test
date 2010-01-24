@@ -7,3 +7,31 @@ player1_fort_pos     = 8 11
 player2_name         = kupka
 player2_fort_file    = exr
 player2_fort_pos     = 66 11 
+
+
+weapon1_name         = bazooka
+weapon1_force        = 30
+weapon1_radius       = 1.5
+weapon1_limit        = -1
+
+weapon2_name         = driller
+weapon2_force        = 40
+weapon2_radius       = 1.5
+weapon2_drill        = 3
+weapon2_limit        = 2
+
+weapon3_name         = bob
+weapon3_force        = -30
+weapon3_radius       = 1.3
+weapon3_limit        = 2
+
+weapon4_name         = bomb
+weapon4_force        = 120
+weapon4_radius       = 3
+weapon4_limit        = 1
+
+weapon5_name         = multi
+weapon5_force        = 30
+weapon5_radius       = 1
+weapon5_amount       = 5
+weapon5_limit        = 2

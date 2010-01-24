@@ -25,6 +25,7 @@ type
 		{ Players colors and names }
 		name: array[1..2] of ansistring;
 		color: array[1..2] of shortint;
+		equipment: Equip;
 	end;
 
 function parse_bfield_dimensions(var field_str: ansistring; var w, h: integer; var nextpos: integer) : ErrorCode;
@@ -284,6 +285,14 @@ var
 	num: integer;
 	i: integer;
 begin
+	for i := 1 to 9 do
+	begin
+		config.equipment[i].amount := 1;
+		config.equipment[i].exp_force := 0;
+		config.equipment[i].exp_radius := 0;
+		config.equipment[i].drill_len := 0;
+		config.equipment[i].num := 0;
+	end;
 	config.fort_modifier := 2;
 	config.max_force := 30;
 	config.max_wind := 4;
@@ -333,6 +342,29 @@ begin
 				parse_game_string.code := INVALID_KEY;
 				parse_game_string.msg := 'Invalid player description key `' + cur^.v.key + ''' in line ' + IntToStr(cur^.v.line);
 				break;
+			end;
+		end
+		else if (length(cur^.v.key) >= 8) and
+			AnsiStartsStr('weapon', cur^.v.key) and (cur^.v.key[7] in ['1'..'9']) then
+		begin
+			num := ord(cur^.v.key[7]) - ord('0');
+			what := AnsiMidStr(cur^.v.key, 9, 100000);
+			if what = 'name' then
+				config.equipment[num].name := cur^.v.value
+			else if what = 'force' then
+				config.equipment[num].exp_force := StrToFloat(cur^.v.value)
+			else if what = 'radius' then
+				config.equipment[num].exp_radius := StrToFloat(cur^.v.value)
+			else if what = 'amount' then
+				config.equipment[num].amount := StrToInt(cur^.v.value)
+			else if what = 'limit' then
+				config.equipment[num].num := StrToInt(cur^.v.value)
+			else if what = 'drill' then
+				config.equipment[num].drill_len := StrToFloat(cur^.v.value)
+			else
+			begin
+				parse_game_string.code := INVALID_KEY;
+				parse_game_string.msg := 'Invalid rocket description key `' + cur^.v.key + ''' in line ' + IntToStr(cur^.v.line);
 			end;
 		end
 		else

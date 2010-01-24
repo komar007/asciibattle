@@ -59,7 +59,7 @@ type
 		exitting, shooting: boolean;
 		{ Flags }
 		tpanel_needs_update, bpanel_needs_update: boolean;
-		player_bar_needs_update, wind_bar_needs_update, force_bar_needs_update: boolean;
+		player_bar_needs_update, wind_bar_needs_update, force_bar_needs_update, weapon_bar_needs_update: boolean;
 		{ The length of the current wind bar }
 		wind_bar: integer;
 	end;
@@ -101,6 +101,7 @@ procedure viewport_update_fields(var iface: ABInterface); forward;
 procedure viewport_update_rockets(var iface: ABInterface); forward;
 function sight_marker_pos(iface: ABInterface) : IntVector; forward;
 procedure update_force_bar(var iface: ABInterface); forward;
+procedure update_weapon_bar(var iface: ABInterface); forward;
 procedure update_panel(var iface: ABInterface; w: WhichPanel); forward;
 procedure count_wind_bar(var iface: ABInterface); forward;
 procedure update_wind_bar(var iface: ABInterface); forward;
@@ -335,7 +336,7 @@ begin
 	gc_change_player(iface.gc^, p);
 	iface.force_bar_needs_update := True;
 	iface.player_bar_needs_update := True;
-	{ future: weapon_bar }
+	iface.weapon_bar_needs_update := True;
 end;
 
 procedure iface_change_force(var iface: ABInterface; delta: double);
@@ -347,6 +348,18 @@ begin
 	iface.force_bar_needs_update := True;
 end;
 
+procedure iface_change_weapon(var iface: ABInterface; w: integer);
+var
+	current_player: pPlayer;
+begin
+	current_player := @iface.gc^.player[iface.gc^.current_player];
+	if gc_player_has_weapon(iface.gc^, iface.gc^.current_player, w) then
+	begin
+		current_player^.current_weapon := w;
+		iface.weapon_bar_needs_update := True;
+	end;
+end;
+
 { Redraws the whole screen }
 procedure iface_redraw(var iface: ABInterface);
 begin
@@ -355,7 +368,7 @@ begin
 	{ Update the panels }
 	update_force_bar(iface);
 	update_wind_bar(iface);
-	{ future: weapon_bar }
+	update_weapon_bar(iface);
 	update_panel(iface, Top);
 	update_panel(iface, Bottom);
 	GotoXY(1, 1);
@@ -371,7 +384,8 @@ begin
 		update_players_bar(iface);
 	if iface.force_bar_needs_update then
 		update_force_bar(iface);
-	{ future: weapon_bar }
+	if iface.weapon_bar_needs_update then
+		update_weapon_bar(iface);
 	if iface.tpanel_needs_update then
 		update_panel(iface, Top);
 	if iface.bpanel_needs_update then
@@ -470,8 +484,26 @@ begin
 	for i := bar_len + 1 to  bar_max_len do
 		bar := bar + ' ';
 	bar := bar + ']';
-	write_panel(iface, Bottom, Center, bar);
+	write_panel(iface, Bottom, Left, bar);
 	iface.force_bar_needs_update := False;
+end;
+
+procedure update_weapon_bar(var iface: ABInterface);
+var
+	current_player: pPlayer;
+	w: pRocket;
+	s: ansistring;
+begin
+	current_player := @iface.gc^.player[iface.gc^.current_player];
+	w := @current_player^.equipment[current_player^.current_weapon];
+	s := '[$1' + IntToStr(current_player^.current_weapon) + '$0] ' + w^.name;
+	s := s + ' r:' + FloatToStr(w^.exp_radius) + ' $4f:' + FloatToStr(w^.exp_force) + '$0';
+	if w^.num = -1 then
+		s := s + ' (inf)'
+	else
+		s := s + ' (' + IntToStr(w^.num) + ')';
+	write_panel(iface, Bottom, Right, s);
+	iface.weapon_bar_needs_update := False;
 end;
 
 { ************************ Panel Section ************************ }
@@ -633,6 +665,7 @@ begin
 			ARight: iface_change_force(iface, 0.5);
 		end
 	else
+	begin
 		case c of
 			Space: iface.shooting := True;
 			Escape: iface.exitting := True;
@@ -641,7 +674,9 @@ begin
 			's': viewport_move(iface.view, iv(0, 5));
 			'd': viewport_move(iface.view, iv(5, 0));
 		end;
-	{ FIXME: add support for other buttons }
+		if c in ['1'..'9'] then
+			iface_change_weapon(iface, ord(c) - ord('0'));
+	end;
 end;
 
 { ************************ Character look Section ************************ }
@@ -707,7 +742,7 @@ begin
 		exit;
 	end;
 	render_field.ch := CH[min(10, (which div 15) + 1)];
-	if field_animated(iface.gc^.pc^, field_pos) and (f.hp < 20) and (f.hp < f.current_hp) then
+	if field_animated(iface.gc^.pc^, field_pos) and (f.hp < 40) and (f.hp < f.current_hp) then
 		render_field.colors := bg or BurningColors[random(6)]
 	else if f.owner > 0 then
 		render_field.colors := bg or iface.gc^.player[f.owner].color
