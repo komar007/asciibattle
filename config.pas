@@ -14,11 +14,15 @@ type
 
 	ConfigStruct = record
 		bfield_file: ansistring;
+		{ How many times stronger than normal terrain the forts are }
 		fort_modifier: double;
+		{ Maximum shot force }
 		max_force: double;
 		max_wind: double;
 		fort_file: array [1..2] of ansistring;
+		{ Positions of forts' origins relative to battlefield }
 		fort_pos: array [1..2] of IntVector;
+		{ Players colors and names }
 		name: array[1..2] of ansistring;
 		color: array[1..2] of shortint;
 	end;
@@ -76,6 +80,7 @@ begin
 	parse_bfield_dimensions := parse_bfield_dimensions(field_str, w, h, nextpos);
 end;
 
+{ Leaves position after dimensions in nextpos }
 function parse_bfield_dimensions(var field_str: ansistring; var w, h: integer; var nextpos: integer) : ErrorCode;
 var
 	i: integer;
@@ -110,6 +115,7 @@ begin
 	parse_bfield_string := parse_bfield_string(field, origin, field_str, cannon, king, modifier, owner);
 end;
 
+{ Parses battlefield or fort description and pastes it into the BField record }
 function parse_bfield_string(var field: BField; origin: IntVector; var field_str: ansistring; var cannon, king: IntVector; modifier: double; owner: integer) : ErrorCode;
 var
 	i: integer;
@@ -214,6 +220,7 @@ begin
 	is_sensible := a in [' '..'~'];
 end;
 
+{ Produces a list of configuration key-value pairs }
 function parse_keys(var pairs: ConfigPairList; var confstr: ansistring) : ErrorCode;
 var
 	pair: ConfigPair;
@@ -267,6 +274,7 @@ begin
 	end;
 end;
 
+{ Parses game configuration }
 function parse_game_string(var options: ansistring; var config: ConfigStruct) : ErrorCode;
 var
 	list: ConfigPairList;
@@ -351,6 +359,7 @@ begin
 		parse_game_string.msg := 'Missing key player2_fort_file';
 	end;
 end;
+
 
 begin
 end.
