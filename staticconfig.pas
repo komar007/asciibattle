@@ -14,7 +14,6 @@ const
 	{ More or less, every how many seconds should the wind change from
 	  increasing to decreasing or vice versa }
 	WIND_CHANGE_TIME = 2;
-	INITIAL_KING_HP = 300;
 	SIGHT_LEN = 2;
 	MAX_W = 5000;
 	MAX_H = 5000;

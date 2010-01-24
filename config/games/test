@@ -1,4 +1,6 @@
-map_file             = title
+map_file             = field
+initial_hp           = 400
+max_force            = 15
 
 player1_name         = komar
 player1_fort_file    = exl

@@ -17,6 +17,7 @@ type
 		{ How many times stronger than normal terrain the forts are }
 		fort_modifier: double;
 		{ Maximum shot force }
+		initial_hp: double;
 		max_force: double;
 		max_wind: double;
 		fort_file: array [1..2] of ansistring;
@@ -30,8 +31,8 @@ type
 
 function parse_bfield_dimensions(var field_str: ansistring; var w, h: integer; var nextpos: integer) : ErrorCode;
 function parse_bfield_dimensions(var field_str: ansistring; var w, h: integer) : ErrorCode;
-function parse_bfield_string(var field: BField; origin: IntVector; var field_str: ansistring; var cannon, king: IntVector; modifier: double; owner: integer) : ErrorCode;
-function parse_bfield_string(var field: BField; origin: IntVector; var field_str: ansistring; modifier: double; owner: integer) : ErrorCode;
+function parse_bfield_string(var field: BField; origin: IntVector; var field_str: ansistring; var cannon, king: IntVector; modifier: double; owner: integer; initial_king_hp: double) : ErrorCode;
+function parse_bfield_string(var field: BField; origin: IntVector; var field_str: ansistring; modifier: double; owner: integer; initial_king_hp: double) : ErrorCode;
 function read_file_to_string(filename: ansistring; var ostr: ansistring) : ErrorCode;
 function parse_game_string(var options: ansistring; var config: ConfigStruct) : ErrorCode;
 
@@ -109,15 +110,15 @@ begin
 	end
 end;
 
-function parse_bfield_string(var field: BField; origin: IntVector; var field_str: ansistring; modifier: double; owner: integer) : ErrorCode;
+function parse_bfield_string(var field: BField; origin: IntVector; var field_str: ansistring; modifier: double; owner: integer; initial_king_hp: double) : ErrorCode;
 var
 	cannon, king: IntVector;
 begin
-	parse_bfield_string := parse_bfield_string(field, origin, field_str, cannon, king, modifier, owner);
+	parse_bfield_string := parse_bfield_string(field, origin, field_str, cannon, king, modifier, owner, initial_king_hp);
 end;
 
 { Parses battlefield or fort description and pastes it into the BField record }
-function parse_bfield_string(var field: BField; origin: IntVector; var field_str: ansistring; var cannon, king: IntVector; modifier: double; owner: integer) : ErrorCode;
+function parse_bfield_string(var field: BField; origin: IntVector; var field_str: ansistring; var cannon, king: IntVector; modifier: double; owner: integer; initial_king_hp: double) : ErrorCode;
 var
 	i: integer;
 	len: integer;
@@ -158,7 +159,7 @@ begin
 			if numeric(field_str[i]) then
 				field.arr[wx, wy].hp := INITIAL_HP[el_type] * modifier
 			else if field_str[i] in ['C', 'K'] then
-				field.arr[wx, wy].hp := INITIAL_KING_HP;
+				field.arr[wx, wy].hp := initial_king_hp;
 			if field_str[i] = 'C' then
 				cannon := iv(x, y);
 			if field_str[i] = 'K' then
@@ -299,6 +300,7 @@ begin
 	config.fort_modifier := 2;
 	config.max_force := 30;
 	config.max_wind := 4;
+	config.initial_hp := 300;
 	config.name[1] := 'Player 1';
 	config.name[2] := 'Player 2';
 	config.color[1] := 2;  {Green}
@@ -324,6 +326,8 @@ begin
 			config.max_force := StrToFloat(cur^.v.value)
 		else if cur^.v.key = 'max_wind' then
 			config.max_wind := StrToFloat(cur^.v.value)
+		else if cur^.v.key = 'initial_hp' then
+			config.initial_hp := StrToFloat(cur^.v.value)
 		else if (length(cur^.v.key) >= 8) and
 			AnsiStartsStr('player', cur^.v.key) and (cur^.v.key[7] in ['1', '2']) then
 		begin

@@ -65,7 +65,7 @@ begin
 		writeln('Error: no such fort (file: ', filename, ')');
 		halt;
 	end;
-	err := parse_bfield_string(field, conf.fort_pos[num], map, cannon, king, conf.fort_modifier, num);
+	err := parse_bfield_string(field, conf.fort_pos[num], map, cannon, king, conf.fort_modifier, num, conf.initial_hp);
 	if err.code <> OK then
 	begin
 		writeln('Error reading fort file: ', err.msg, ' (file: ', filename, ')');
@@ -113,7 +113,7 @@ begin
 		halt;
 	end;
 	new_bfield(bf, field_w, field_h);
-	err := parse_bfield_string(bf, iv(0, 0), map, 1, 0);
+	err := parse_bfield_string(bf, iv(0, 0), map, 1, 0, conf.initial_hp);
 	if err.code <> OK then
 	begin
 		writeln('Error reading map file: ', err.msg, ' (file: ', filename, ')');
@@ -126,13 +126,14 @@ begin
 	new_gc(gc, @bf, p1, p2, conf.max_wind, conf.max_force);
 	new_abinterface(iface, @gc);
 	turn := 1;
-	while true do
+	while True do
 	begin
-		gc_step(gc, 0.033);
+		if not iface.locked then
+			gc_step(gc, 0.033);
 		iface_step(iface);
 		if iface.exitting then
 			halt;
-		if iface.shooting then
+		if iface.shooting and not iface.locked then
 		begin
 			if gc_player_has_weapon(gc, gc.current_player, gc.player[gc.current_player].current_weapon) then
 			begin
@@ -142,18 +143,8 @@ begin
 			end;
 			iface.shooting := False;
 		end;
-		if gc.player1_won then
-		begin
-			clrscr;
-			writeln('Player ', p1.name, ' won!');
-			halt;
-		end;
-		if gc.player2_won then
-		begin
-			clrscr;
-			writeln('Player ', p2.name, ' won!');
-			halt;
-		end;
+		if gc.player[1].won or gc.player[2].won then
+			iface.locked := True;
 		delay(33);
 	end;
 end.

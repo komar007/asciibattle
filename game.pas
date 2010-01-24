@@ -15,6 +15,7 @@ type
 		color: shortint;
 		equipment: Equip;
 		current_weapon: integer;
+		won: boolean;
 	end;
 	pPlayer = ^Player;
 
@@ -28,7 +29,6 @@ type
 		{ Tells whether the wind force is increasing or decreasing }
 		wind_dir: integer;
 		{ Flags for the main program }
-		player1_won, player2_won: boolean;
 	end;
 	pGameController = ^GameController;
 
@@ -57,6 +57,7 @@ begin
 	p.force := max_force / 2;
 	p.equipment := equipment;
 	p.current_weapon := 1;
+	p.won := False;
 end;
 
 procedure new_gc(var g: GameController; bf: pBField; var p1, p2: Player; max_wind, max_force: double);
@@ -73,8 +74,6 @@ begin
 	g.player[2] := p2;
 	set_player_initial_angle(g, 1);
 	set_player_initial_angle(g, 2);
-	g.player1_won := False;
-	g.player2_won := False;
 	gc_change_player(g, 1);
 end;
 
@@ -150,9 +149,9 @@ begin
 	wind_step(g, delta);
 	pc_step(g.pc^, delta);
 	if check_loose(g, g.player[1]) then
-		g.player2_won := True;
+		g.player[2].won := True;
 	if check_loose(g, g.player[2]) then
-		g.player1_won := True;
+		g.player[1].won := True;
 end;
 
 { Returns on which side of the field the player is }

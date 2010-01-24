@@ -62,6 +62,7 @@ type
 		player_bar_needs_update, wind_bar_needs_update, force_bar_needs_update, weapon_bar_needs_update: boolean;
 		{ The length of the current wind bar }
 		wind_bar: integer;
+		locked: boolean;
 	end;
 
 procedure new_abinterface(var iface: ABInterface; gc: pGameController);
@@ -106,9 +107,9 @@ procedure update_panel(var iface: ABInterface; w: WhichPanel); forward;
 procedure count_wind_bar(var iface: ABInterface); forward;
 procedure update_wind_bar(var iface: ABInterface); forward;
 procedure update_players_bar(var iface: ABInterface); forward;
-procedure write_panel(var iface: ABInterface; pan: WhichPanel; place: WhichPlace; s: ansistring); forward;
 procedure iface_update(var iface: ABInterface); forward;
 procedure iface_redraw(var iface: ABInterface); forward;
+procedure iface_write_panel(var iface: ABInterface; pan: WhichPanel; place: WhichPlace; s: ansistring); forward;
 procedure read_input(var iface: ABInterface); forward;
 function render_field(var iface: ABInterface; p: IntVector) : CharOnScreen; forward;
 function render_rocket(var iface: ABInterface; r: Rocket) : CharOnScreen; forward;
@@ -304,6 +305,7 @@ begin
 	iface.force_bar_needs_update := True;
 	iface.view.sight_marker := sight_marker_pos(iface);
 	iface.wind_bar := 0;
+	iface.locked := False;
 end;
 
 { Performs a single step of the interface processing loop }
@@ -453,7 +455,7 @@ begin
 			s := s + ' ';
 		s := s + ']';
 	end;
-	write_panel(iface, Top, Center, s);
+	iface_write_panel(iface, Top, Center, s);
 	iface.wind_bar_needs_update := False;
 end;
 
@@ -467,15 +469,18 @@ begin
 	for i := 1 to 2 do
 	begin
 		pl := @iface.gc^.player[i];
-		pstring := pl^.name + ' (' + IntToStr(gc_player_life(iface.gc^, i)) + ' hp)';
+		if iface.gc^.player[i].won then
+			pstring := pl^.name + ' $4VICTORY!!!$0'
+		else
+			pstring := pl^.name + ' (' + IntToStr(gc_player_life(iface.gc^, i)) + ' hp)';
 		if i = iface.gc^.current_player then
 			pstring := '$4 > $0' + pstring + '$4 <$0 '
 		else
 			pstring := '   ' + pstring + '   ';
 		if gc_player_side(iface.gc^, i) = FortLeft then
-			write_panel(iface, Top, Left, pstring) 
+			iface_write_panel(iface, Top, Left, pstring) 
 		else
-			write_panel(iface, Top, Right, pstring);
+			iface_write_panel(iface, Top, Right, pstring);
 	end;
 	iface.player_bar_needs_update := False;
 end;
@@ -496,7 +501,7 @@ begin
 	for i := bar_len + 1 to  bar_max_len do
 		bar := bar + ' ';
 	bar := bar + ']';
-	write_panel(iface, Bottom, Left, bar);
+	iface_write_panel(iface, Bottom, Left, bar);
 	iface.force_bar_needs_update := False;
 end;
 
@@ -519,14 +524,14 @@ begin
 	end
 	else
 		s := 'No weapon :(';
-	write_panel(iface, Bottom, Right, s);
+	iface_write_panel(iface, Bottom, Right, s);
 	iface.weapon_bar_needs_update := False;
 end;
 
 { ************************ Panel Section ************************ }
 
 { Fills panel buffer, schedules panel update }
-procedure write_panel(var iface: ABInterface; pan: WhichPanel; place: WhichPlace; s: ansistring);
+procedure iface_write_panel(var iface: ABInterface; pan: WhichPanel; place: WhichPlace; s: ansistring);
 begin
 	if pan = Top then
 	begin
@@ -675,23 +680,26 @@ begin
 		c := ReadKey;
 	end;
 	if prev = chr(0) then
-		case c of
-			AUp: viewport_move_sight(iface, 0.1);
-			ADown: viewport_move_sight(iface, -0.1);
-			ALeft: iface_change_force(iface, -0.5);
-			ARight: iface_change_force(iface, 0.5);
-		end
+	begin
+		if not iface.locked then
+			case c of
+				AUp: viewport_move_sight(iface, 0.1);
+				ADown: viewport_move_sight(iface, -0.1);
+				ALeft: iface_change_force(iface, -0.5);
+				ARight: iface_change_force(iface, 0.5);
+			end
+	end
 	else
 	begin
 		case c of
-			Space: iface.shooting := True;
+			Space: if not iface.locked then iface.shooting := True;
 			Escape: iface.exitting := True;
 			'w': viewport_move(iface.view, iv(0, -5));
 			'a': viewport_move(iface.view, iv(-5, 0));
 			's': viewport_move(iface.view, iv(0, 5));
 			'd': viewport_move(iface.view, iv(5, 0));
 		end;
-		if c in ['1'..'9'] then
+		if (c in ['1'..'9']) and not iface.locked then
 			iface_change_weapon(iface, ord(c) - ord('0'));
 	end;
 end;
