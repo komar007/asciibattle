@@ -88,6 +88,7 @@ var
 	field_w, field_h: integer;
 	p1, p2: Player;
 begin	
+	randomize;
 	if ParamCount = 0 then
 	begin
 		{ Temporary }
@@ -118,22 +119,13 @@ begin
 		writeln('Error reading map file: ', err.msg, ' (file: ', filename, ')');
 		halt;
 	end;
-	p1.max_force := conf.max_force;
-	p1.force := conf.max_force / 2;
-	p2.max_force := conf.max_force;
-	p2.force := conf.max_force / 2;
-	p1.name := conf.name[1];
-	p2.name := conf.name[2];
-	p1.color := conf.color[1];
-	p2.color := conf.color[2];
+	new_player(p1, conf.name[1], conf.color[1], conf.max_force);
+	new_player(p2, conf.name[2], conf.color[2], conf.max_force);
 	read_fort(bf, conf, p1, 1); 
 	read_fort(bf, conf, p2, 2);
-	new_gc(gc, @bf, p1, p2, conf.max_wind);
-
-	gc_change_player(gc, 1);
+	new_gc(gc, @bf, p1, p2, conf.max_wind, conf.max_force);
 	new_abinterface(iface, @gc);
-	iface_change_player(iface, 1);
-	turn := 0;
+	turn := 1;
 	while true do
 	begin
 		gc_step(gc, 0.033);
@@ -143,10 +135,7 @@ begin
 		if iface.shooting then
 		begin
 			gc_shoot(gc);
-			if (turn mod 2) = 0 then
-				iface_change_player(iface, 2)
-			else
-				iface_change_player(iface, 1);
+			iface_change_player(iface, (turn mod 2) + 1);
 			iface.shooting := False;
 			inc(turn);
 		end;

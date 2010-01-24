@@ -9,7 +9,10 @@ const
 	CH: array [0..10] of char = (' ','.',',',':','&','%','#','$','@','O','G');
 	FIELD_WIDTH = 0.2;
 	FIELD_HEIGHT = 0.39;
-	WIND_FLUCT = 0.01;
+	{ How much should the wind acceleration change per second }
+	WIND_FLUCT = 0.3;
+	{ More or less, every how many seconds should the wind change from
+	  increasing to decreasing or vice versa }
 	WIND_CHANGE_TIME = 2;
 	INITIAL_KING_HP = 300;
 	SIGHT_LEN = 2;

@@ -21,7 +21,7 @@ w = ScreenWidth
 }
 
 interface
-uses Game, Physics, Types, Geometry, Lists, Crt;
+uses Game, Geometry;
 
 type
 	WhichPanel = (Top, Bottom);
@@ -43,7 +43,9 @@ type
 		{ Screen buffer to make sure only necessary updates are made
 		  and assure the minimal number of IO operations }
 		screen: array of array of CharOnScreen;
-		needs_redraw: boolean;
+		{ Flag }
+		needs_update: boolean;
+		{ Current position of the sight marker }
 		sight_marker: IntVector;
 	end;
 
@@ -51,11 +53,15 @@ type
 		width, height: integer;
 		view: ViewPort;
 		gc: pGameController;
+		{ Strings representing what is in 6 sections of panels }
 		paneltl, paneltc, paneltr, panelbl, panelbc, panelbr: ansistring;
+		{ Flags used by main program }
 		exitting, shooting: boolean;
+		{ Flags }
 		tpanel_needs_update, bpanel_needs_update: boolean;
-		player_bar_needs_update: boolean;
-		wind: integer;
+		player_bar_needs_update, wind_bar_needs_update, force_bar_needs_update: boolean;
+		{ The length of the current wind bar }
+		wind_bar: integer;
 	end;
 
 procedure new_abinterface(var iface: ABInterface; gc: pGameController);
@@ -64,7 +70,7 @@ procedure iface_change_player(var iface: ABInterface; p: integer);
 
 
 implementation
-uses StaticConfig, SysUtils, BattleField,
+uses Crt, Lists, Types, Physics, StaticConfig, SysUtils, BattleField,
 {$ifdef LINUX}
 	termio, BaseUnix,
 {$endif}
@@ -96,9 +102,12 @@ procedure viewport_update_rockets(var iface: ABInterface); forward;
 function sight_marker_pos(iface: ABInterface) : IntVector; forward;
 procedure update_force_bar(var iface: ABInterface); forward;
 procedure update_panel(var iface: ABInterface; w: WhichPanel); forward;
-procedure update_player_bar(var iface: ABInterface; p: integer); forward;
-procedure update_wind_bar(var iface: ABInterface; force: boolean); forward;
+procedure count_wind_bar(var iface: ABInterface); forward;
+procedure update_wind_bar(var iface: ABInterface); forward;
+procedure update_players_bar(var iface: ABInterface); forward;
 procedure write_panel(var iface: ABInterface; pan: WhichPanel; place: WhichPlace; s: ansistring); forward;
+procedure iface_update(var iface: ABInterface); forward;
+procedure iface_redraw(var iface: ABInterface); forward;
 procedure read_input(var iface: ABInterface); forward;
 function render_field(var iface: ABInterface; p: IntVector) : CharOnScreen; forward;
 function render_rocket(var iface: ABInterface; r: Rocket) : CharOnScreen; forward;
@@ -112,7 +121,7 @@ begin
 	view.origin := iv(x, y);
 	view.height := 0;
 	view.width := 0;
-	view.needs_redraw := True;
+	view.needs_update := True;
 end;
 
 { Changes the size of viewport and resizes the buffer array, if necessary }
@@ -120,11 +129,10 @@ procedure resize_viewport(var view: ViewPort; w, h: integer);
 begin
 	if (w > view.width) or (h > view.height) then
 		setlength(view.screen, w, h);
-	view.width := w;
-	view.height := h;
+	view.width := w; view.height := h;
 end;
 
-{ Checks if a point can be rendered within a viewport }
+{ Checks if a point can be rendered in a viewport }
 function field_in_viewport(var view: ViewPort; p: IntVector) : boolean;
 begin
 	field_in_viewport := (p.x >= 0) and (p.x < view.width) and
@@ -144,16 +152,17 @@ begin
 	field_to_viewport_position := p - view.origin;
 end;
 
+{ Changes the origin of a viewport }
 procedure viewport_move(var view: ViewPort; offset: IntVector);
 begin
 	view.origin := view.origin + offset;
-	view.needs_redraw := True;
+	view.needs_update := True;
 end;
 
 { Prints a char to the screen }
-procedure viewport_putchar(view: ViewPort; pos: IntVector; c: CharOnScreen; force: boolean);
+procedure viewport_putchar(view: ViewPort; pos: IntVector; c: CharOnScreen);
 begin
-	if field_in_viewport(view, pos) and ((view.screen[pos.x, pos.y] <> c) or force) then
+	if field_in_viewport(view, pos) and (view.screen[pos.x, pos.y] <> c) then
 	begin
 		view.screen[pos.x, pos.y] := c;
 		GotoXY(pos.x + 1, pos.y + 2);
@@ -169,18 +178,24 @@ var
 	c: CharOnScreen;
 	i, j: integer;
 begin
+	c.ch := chr(255);
+	{ Clean screen buffer }
+	for j := 0 to iface.view.height - 1 do
+		for i := 0 to iface.view.width - 1 do
+			iface.view.screen[i, j] := c;
 	for j := 0 to iface.view.height - 1 do
 	begin
 		for i := 0 to iface.view.width - 1 do
 		begin
 			c := render_field(iface, iv(i, j));
-			viewport_putchar(iface.view, iv(i, j), c, True);
+			viewport_putchar(iface.view, iv(i, j), c);
 		end;
 	end;
-	iface.view.needs_redraw := False;
 	viewport_update_rockets(iface);
+	iface.view.needs_update := False;
 end;
 
+{ Updates the viewport selectively }
 procedure viewport_update(var iface: ABInterface);
 begin
 	viewport_update_fields(iface);
@@ -200,15 +215,15 @@ begin
 	begin
 		pos_viewport := field_to_viewport_position(iface.view, cur^.v);
 		c := render_field(iface, pos_viewport);
-		if (cur^.v = iface.gc^.player[1].king) or (cur^.v = iface.gc^.player[2].king) then
+		if gc_field_is_king(iface.gc^, cur^.v) then
 			iface.player_bar_needs_update := True;
-		viewport_putchar(iface.view, pos_viewport, c, False);
+		viewport_putchar(iface.view, pos_viewport, c);
 		cur := cur^.next;
 	end;
 	GotoXY(1, 1);
 end;
 
-{ Updates rockets' positions }
+{ Redraws all rockets }
 procedure viewport_update_rockets(var iface: ABInterface);
 var
 	cur: pRocketNode;
@@ -220,11 +235,11 @@ begin
 	begin
 		pos := field_to_viewport_position(iface.view, iv(cur^.v.oldpos));
 		c := render_field(iface, pos);
-		viewport_putchar(iface.view, pos, c, False);
+		viewport_putchar(iface.view, pos, c);
 		pos := field_to_viewport_position(iface.view, iv(cur^.v.position));
 		c := render_rocket(iface, cur^.v);
 		if not cur^.v.removed then
-			viewport_putchar(iface.view, pos, c, False);
+			viewport_putchar(iface.view, pos, c);
 		cur := cur^.next;
 	end;
 	GotoXY(1,1);
@@ -240,52 +255,35 @@ begin
 	if oview_pos <> nview_pos then
 	begin
 		c := render_field(iface, oview_pos);
-		viewport_putchar(iface.view, oview_pos, c, False);
-
+		viewport_putchar(iface.view, oview_pos, c);
 		c := render_field(iface, nview_pos);
-		viewport_putchar(iface.view, nview_pos, c, False);
-		GotoXY(1,1);
+		viewport_putchar(iface.view, nview_pos, c);
 		iface.view.sight_marker := sight_marker_pos(iface);
+		GotoXY(1,1);
 	end;
 end;
 
+{ Changes the angle of sight }
 procedure viewport_move_sight(var iface: ABInterface; delta: double);
-begin
-	if gc_player_side(iface.gc^, iface.gc^.current_player^) = FortLeft then
-		iface.gc^.current_player^.angle := iface.gc^.current_player^.angle - delta
-	else
-		iface.gc^.current_player^.angle := iface.gc^.current_player^.angle + delta;
-	viewport_update_sight(iface);
-end;
-
-function sight_marker_pos(iface: ABInterface) : IntVector;
-begin
-	sight_marker_pos := iv(fc(iface.gc^.current_player^.cannon) +
-		v(cos(iface.gc^.current_player^.angle) * SIGHT_LEN,
-		  sin(iface.gc^.current_player^.angle) * SIGHT_LEN));
-end;
-
-procedure viewport_change_force(var iface: ABInterface; delta: double);
-begin
-	iface.gc^.current_player^.force := max(0, min(iface.gc^.current_player^.max_force, iface.gc^.current_player^.force + delta));
-	update_force_bar(iface);
-end;
-
-procedure update_force_bar(var iface: ABInterface);
 var
-	bar_len, bar_max_len: integer;
-	bar: ansistring;
-	i: integer;
+	current_player: pPlayer;
 begin
-	bar_max_len := trunc(iface.width / 4);
-	bar_len := trunc(bar_max_len * iface.gc^.current_player^.force / iface.gc^.current_player^.max_force);
-	bar := 'Force: [';
-	for i := 1 to bar_len do
-		bar := bar + '=';
-	for i := bar_len + 1 to  bar_max_len do
-		bar := bar + ' ';
-	bar := bar + ']';
-	write_panel(iface, Bottom, Center, bar);
+	current_player := @iface.gc^.player[iface.gc^.current_player];
+	if gc_player_side(iface.gc^, iface.gc^.current_player) = FortLeft then
+		current_player^.angle := current_player^.angle - delta
+	else
+		current_player^.angle := current_player^.angle + delta;
+end;
+
+{ Calculates the position of sight marker }
+function sight_marker_pos(iface: ABInterface) : IntVector;
+var
+	current_player: pPlayer;
+begin
+	current_player := @iface.gc^.player[iface.gc^.current_player];
+	sight_marker_pos := iv(fc(current_player^.cannon) +
+		v(cos(current_player^.angle) * SIGHT_LEN,
+		  sin(current_player^.angle) * SIGHT_LEN));
 end;
 
 { ************************ Interface Section ************************ }
@@ -301,84 +299,13 @@ begin
 	iface.tpanel_needs_update := True;
 	iface.bpanel_needs_update := True;
 	iface.player_bar_needs_update := True;
+	iface.wind_bar_needs_update := True;
+	iface.force_bar_needs_update := True;
 	iface.view.sight_marker := sight_marker_pos(iface);
-	iface.wind := 0;
+	iface.wind_bar := 0;
 end;
 
-procedure iface_redraw(var iface: ABInterface);
-begin
-	revert_standard_colors;
-	{ Update the panels }
-	update_force_bar(iface);
-	update_wind_bar(iface, True);
-	update_panel(iface, Top);
-	update_panel(iface, Bottom);
-	viewport_redraw(iface);
-	GotoXY(1, 1);
-end;
-
-procedure iface_update(var iface: ABInterface);
-begin
-	update_wind_bar(iface, False);
-	revert_standard_colors;
-	if iface.player_bar_needs_update then
-	begin
-		update_player_bar(iface, 1);
-		update_player_bar(iface, 2);
-		iface.player_bar_needs_update := False;
-	end;
-	if iface.tpanel_needs_update then
-		update_panel(iface, Top);
-	if iface.bpanel_needs_update then
-		update_panel(iface, Bottom);
-	viewport_update(iface);
-end;
-
-procedure update_wind_bar(var iface: ABInterface; force: boolean);
-var
-	wind: integer;
-	maxl: integer;
-	i: integer;
-	s: ansistring;
-begin
-	maxl := iface.width div 8;
-	if abs(iface.gc^.max_wind) = 0 then
-		wind := 0
-	else
-		wind := trunc(iface.gc^.pc^.wind / iface.gc^.max_wind * maxl);
-	if (wind <> iface.wind) or force then
-	begin
-		s := 'Wind: ';
-		if wind > 0 then
-		begin
-			s := s + '[';
-			for i := 1 to maxl do
-				s := s + ' ';
-			s := s + '$4|$1';
-			for i := 1 to wind do
-				s := s + '>';
-			for i := 1 to maxl - wind do
-				s := s + ' ';
-			s := s + '$0]'
-		end
-		else
-		begin
-			s := s + '[$1';
-			for i := 1 to maxl + wind do
-				s := s + ' ';
-			for i := 1 to -wind do
-				s := s + '<';
-			s := s + '$4|$0';
-			for i := 1 to maxl do
-				s := s + ' ';
-			s := s + ']';
-		end;
-
-		write_panel(iface, Top, Center, s);
-		iface.wind := wind;
-	end;
-end;
-
+{ Performs a single step of the interface processing loop }
 procedure iface_step(var iface: ABInterface);
 var
 	old_w, old_h: integer;
@@ -386,6 +313,7 @@ begin
 	old_w := iface.width;
 	old_h := iface.height;
 	ScreenSize(iface.width, iface.height);
+	count_wind_bar(iface);
 	if (old_w <> iface.width) or (old_h <> iface.height) then
 	begin
 		{ Recalculate viewport dimensions }
@@ -393,7 +321,7 @@ begin
 		{ Redraw the whole screen }
 		iface_redraw(iface);
 	end
-	else if iface.view.needs_redraw then
+	else if iface.view.needs_update then
 		viewport_redraw(iface)	
 	else
 		{ Perform normal update }
@@ -401,33 +329,177 @@ begin
 	read_input(iface);
 end;
 
+{ Changes the player and updates what needs to be updated in such a case }
 procedure iface_change_player(var iface: ABInterface; p: integer);
 begin
 	gc_change_player(iface.gc^, p);
-	update_force_bar(iface);
-	update_player_bar(iface, 1);
-	update_player_bar(iface, 2);
+	iface.force_bar_needs_update := True;
+	iface.player_bar_needs_update := True;
+	{ future: weapon_bar }
 end;
 
-procedure update_player_bar(var iface: ABInterface; p: integer);
+procedure iface_change_force(var iface: ABInterface; delta: double);
+var
+	current_player: pPlayer;
+begin
+	current_player := @iface.gc^.player[iface.gc^.current_player];
+	current_player^.force := max(0, min(current_player^.max_force, current_player^.force + delta));
+	iface.force_bar_needs_update := True;
+end;
+
+{ Redraws the whole screen }
+procedure iface_redraw(var iface: ABInterface);
+begin
+	revert_standard_colors;
+	viewport_redraw(iface);
+	{ Update the panels }
+	update_force_bar(iface);
+	update_wind_bar(iface);
+	{ future: weapon_bar }
+	update_panel(iface, Top);
+	update_panel(iface, Bottom);
+	GotoXY(1, 1);
+end;
+
+procedure iface_update(var iface: ABInterface);
+begin
+	revert_standard_colors;
+	viewport_update(iface);
+	if iface.wind_bar_needs_update then
+		update_wind_bar(iface);
+	if iface.player_bar_needs_update then
+		update_players_bar(iface);
+	if iface.force_bar_needs_update then
+		update_force_bar(iface);
+	{ future: weapon_bar }
+	if iface.tpanel_needs_update then
+		update_panel(iface, Top);
+	if iface.bpanel_needs_update then
+		update_panel(iface, Bottom);
+end;
+
+{ Conts the integer version of wind force used to represent wind in the interface }
+procedure count_wind_bar(var iface: ABInterface);
+var
+	old_wind: integer;
+	maxl: integer;
+begin
+	old_wind := iface.wind_bar;
+	maxl := iface.width div 8;
+	if abs(iface.gc^.max_wind) = 0 then
+		iface.wind_bar := 0
+	else
+		iface.wind_bar := trunc(iface.gc^.pc^.wind.x / iface.gc^.max_wind * maxl);
+	if iface.wind_bar <> old_wind then
+		iface.wind_bar_needs_update := True;
+end;
+
+{ Rewrites the wind indicator }
+procedure update_wind_bar(var iface: ABInterface);
+var
+	i: integer;
+	s: ansistring;
+	maxl: integer;
+begin
+	maxl := iface.width div 8;
+	s := 'Wind: ';
+	if iface.wind_bar > 0 then
+	begin
+		s := s + '[';
+		for i := 1 to maxl do
+			s := s + ' ';
+		s := s + '$4|$1';
+		for i := 1 to iface.wind_bar do
+			s := s + '>';
+		for i := 1 to maxl - iface.wind_bar do
+			s := s + ' ';
+		s := s + '$0]'
+	end
+	else
+	begin
+		s := s + '[$1';
+		for i := 1 to maxl + iface.wind_bar do
+			s := s + ' ';
+		for i := 1 to -iface.wind_bar do
+			s := s + '<';
+		s := s + '$4|$0';
+		for i := 1 to maxl do
+			s := s + ' ';
+		s := s + ']';
+	end;
+	write_panel(iface, Top, Center, s);
+	iface.wind_bar_needs_update := False;
+end;
+
+{ Updates information about players - health and who is playing }
+procedure update_players_bar(var iface: ABInterface);
 var
 	pstring: ansistring;
 	pl: pPlayer;
+	i: integer;
 begin
-	pl := @iface.gc^.player[p];
-	pstring := pl^.name + ' (' + IntToStr(gc_player_life(iface.gc^, p)) + ' hp)';
-	if pl = iface.gc^.current_player then
-		pstring := '$4 > $0' + pstring + '$4 <$0 '
-	else
-		pstring := '   ' + pstring + '   ';
-	if gc_player_side(iface.gc^, pl^) = FortLeft then
-		write_panel(iface, Top, Left, pstring) 
-	else
-		write_panel(iface, Top, Right, pstring);
+	for i := 1 to 2 do
+	begin
+		pl := @iface.gc^.player[i];
+		pstring := pl^.name + ' (' + IntToStr(gc_player_life(iface.gc^, i)) + ' hp)';
+		if i = iface.gc^.current_player then
+			pstring := '$4 > $0' + pstring + '$4 <$0 '
+		else
+			pstring := '   ' + pstring + '   ';
+		if gc_player_side(iface.gc^, i) = FortLeft then
+			write_panel(iface, Top, Left, pstring) 
+		else
+			write_panel(iface, Top, Right, pstring);
+	end;
+	iface.player_bar_needs_update := False;
+end;
+
+procedure update_force_bar(var iface: ABInterface);
+var
+	bar_len, bar_max_len: integer;
+	bar: ansistring;
+	current_player: pPlayer;
+	i: integer;
+begin
+	current_player := @iface.gc^.player[iface.gc^.current_player];
+	bar_max_len := trunc(iface.width / 4);
+	bar_len := trunc(bar_max_len * current_player^.force / iface.gc^.max_force);
+	bar := 'Force: [';
+	for i := 1 to bar_len do
+		bar := bar + '=';
+	for i := bar_len + 1 to  bar_max_len do
+		bar := bar + ' ';
+	bar := bar + ']';
+	write_panel(iface, Bottom, Center, bar);
+	iface.force_bar_needs_update := False;
 end;
 
 { ************************ Panel Section ************************ }
 
+{ Fills panel buffer, schedules panel update }
+procedure write_panel(var iface: ABInterface; pan: WhichPanel; place: WhichPlace; s: ansistring);
+begin
+	if pan = Top then
+	begin
+		iface.tpanel_needs_update := True;
+		case place of
+			Left: iface.paneltl := s;
+			Center: iface.paneltc := s;
+			Right: iface.paneltr := s;
+		end;
+	end
+	else
+	begin
+		iface.bpanel_needs_update := True;
+		case place of
+			Left: iface.panelbl := s;
+			Center: iface.panelbc := s;
+			Right: iface.panelbr := s;
+		end;
+	end;
+end;
+
+{ Counts the width of a template (counts the characters omitting attribute change characters }
 function template_width(t: ansistring) : integer;
 var
 	len: integer;
@@ -453,6 +525,7 @@ begin
 	end;
 end;
 
+{ Renders the template to the screen }
 procedure write_template(t: ansistring; char_limit: integer);
 var
 	len: integer;
@@ -462,6 +535,7 @@ begin
 	len := length(t);
 	i := 1;
 	while (i <= len) and (char_limit <> 0) do
+	begin
 		case t[i] of
 			'$': begin
 				s := t[i+1];
@@ -484,8 +558,10 @@ begin
 				inc(i);
 			end;
 		end;
+	end;
 end;
 
+{ Draws the whole panel to the screen }
 procedure update_panel(var iface: ABInterface; w: WhichPanel);
 var
 	i: integer;
@@ -532,28 +608,6 @@ begin
 	GotoXY(old_x, old_y);
 end;
 
-procedure write_panel(var iface: ABInterface; pan: WhichPanel; place: WhichPlace; s: ansistring);
-begin
-	if pan = Top then
-	begin
-		iface.tpanel_needs_update := True;
-		case place of
-			Left: iface.paneltl := s;
-			Center: iface.paneltc := s;
-			Right: iface.paneltr := s;
-		end;
-	end
-	else
-	begin
-		iface.bpanel_needs_update := True;
-		case place of
-			Left: iface.panelbl := s;
-			Center: iface.panelbc := s;
-			Right: iface.panelbr := s;
-		end;
-	end;
-end;
-
 { ************************ Input Section ************************ }
 
 procedure read_input(var iface: ABInterface);
@@ -575,8 +629,8 @@ begin
 		case c of
 			AUp: viewport_move_sight(iface, 0.1);
 			ADown: viewport_move_sight(iface, -0.1);
-			ALeft: viewport_change_force(iface, -0.5);
-			ARight: viewport_change_force(iface, 0.5);
+			ALeft: iface_change_force(iface, -0.5);
+			ARight: iface_change_force(iface, 0.5);
 		end
 	else
 		case c of
@@ -592,7 +646,8 @@ end;
 
 { ************************ Character look Section ************************ }
 
-{ Returns what char should be at position (x, y) relative to the origin of viewport }
+{ Returns what char should be at position (x, y) relative to the origin of viewport
+  Takes into account also the sight marker, kings and castles }
 function render_field(var iface: ABInterface; p: IntVector) : CharOnScreen;
 var
 	field_pos: IntVector;

@@ -10,14 +10,13 @@ type
 		hp_speed: double;
 		owner: integer;
 	end;
+	pBFieldElement = ^BFieldElement;
 
 	BField = record
 		width, height: integer;
 		arr: array of array of BFieldElement;
 	end;
-
 	pBField = ^BField;
-	pBFieldElement = ^BFieldElement;
 
 procedure new_bfield(var field: BField; x, y: integer);
 
@@ -31,6 +30,7 @@ begin
 	field.height := y;
 	setlength(field.arr, x, y);
 end;
+
 
 begin
 end.
