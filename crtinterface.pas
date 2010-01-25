@@ -306,6 +306,10 @@ begin
 	iface.view.sight_marker := sight_marker_pos(iface);
 	iface.wind_bar := 0;
 	iface.locked := False;
+	iface_step(iface);
+	viewport_move(iface.view, iv(
+		iface.gc^.pc^.field^.width div 2 - iface.view.width div 2,
+		iface.gc^.pc^.field^.height div 2 - iface.view.height div 2));
 end;
 
 { Performs a single step of the interface processing loop }
