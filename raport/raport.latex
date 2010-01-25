@@ -152,7 +152,7 @@ W celu optymalizacji ilości operacji wejścia/wyjścia w każdym kroku animacji
 Kontroler rozgrywki zaimplementowany jest jako moduł Game oraz program główny. Moduł Game odpowiada za translacje poleceń strzału zawodnika na polecenia zrozumiałe dla symulatora fizyki (tzn.~ustawienie rakiety w danym punkcie oraz jej prędkości początkowej) oraz kontrolowanie logiki gry: sprawdzanie wygranej, stanu życia graczy, zmiana siły wiatru. Główny program ma za zadanie odczytać informacje z plików konfiguracyjnych, zainicjalizować struktury danych i kontrolować rozgrywkę przez naprzemienne wystrzeliwanie z dział przeciwników.
 
 \section{Specyfikacja zewnętrzna}
-Program uruchomiony bez parametrów wyświetla listę dostępnych w~katalogu konfiguracyjnym ~/.config/asciibattle plików rozgrywek. Jako pierwszy i~jedyny parametr użytkownik może podać nazwę pliku rozgrywki.
+Jako pierwszy i~jedyny parametr użytkownik podaje nazwę pliku rozgrywki.
 W~trakcie gry gracze naprzemiennie strzelają ze swoich baz różnymi pociskami. Klawisze od 1 do 9 służą do wyboru między zdefiniowanymi w~pliku rozgrywki rakietami. Za pomocą klawiszy W, A, S, D można przesuwać widok planszy.
 Do ustawiania parametrów wystrzału służą strzałki. Siłę wystrzału regulują strzałka lewa oraz strzałka prawa, a~kąt - strzałka górna i~strzałka dolna. Za pomocą spacji użytkownik wystrzeliwuje pocisk.
 Celem gry jest zabicie króla przeciwnika.
