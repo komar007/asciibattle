@@ -73,9 +73,9 @@
 \hbox{\vbox
 	{\hsize 7.5cm
 		\begin{tabular} {r|c|}
-			{data ćwiczenia:} & 2006/12/07 	\\ \hline
-		   	{termin sprawozdania:} & 2006/12/14 \\ \hline
-			{data sprawozdania:} & \\ \hline
+			{data ćwiczenia:} & 2010/01/25 	\\ \hline
+		   	{termin sprawozdania:} & 2010/01/25 \\ \hline
+			{data sprawozdania:} & 2010/01/25 \\ \hline
 			{ocena:} & \\ \hline
 		\end{tabular}
 	}
@@ -83,7 +83,7 @@
 	\vbox
 	{\hsize 8cm
 		\begin{tabular} {ll|}
-			\tl{prowadzący:} & dr inż. Tomasz Wojdyła \\ \hline
+			\tl{prowadzący:} & Tomasz Wojdyła \\ \hline
 			\tl{autor:} & Michał Trybus \\ \hline
 		\end{tabular}
 	}
@@ -152,63 +152,58 @@ W celu optymalizacji ilości operacji wejścia/wyjścia w każdym kroku animacji
 Kontroler rozgrywki zaimplementowany jest jako moduł Game oraz program główny. Moduł Game odpowiada za translacje poleceń strzału zawodnika na polecenia zrozumiałe dla symulatora fizyki (tzn.~ustawienie rakiety w danym punkcie oraz jej prędkości początkowej) oraz kontrolowanie logiki gry: sprawdzanie wygranej, stanu życia graczy, zmiana siły wiatru. Główny program ma za zadanie odczytać informacje z plików konfiguracyjnych, zainicjalizować struktury danych i kontrolować rozgrywkę przez naprzemienne wystrzeliwanie z dział przeciwników.
 
 \section{Specyfikacja zewnętrzna}
-Tu proszę napisać, jak należy się posługiwać programem (pewnego rodzaju instrukcja obsługi). 
+Program uruchomiony bez parametrów wyświetla listę dostępnych w~katalogu konfiguracyjnym ~/.config/asciibattle plików rozgrywek. Jako pierwszy i~jedyny parametr użytkownik może podać nazwę pliku rozgrywki.
+W~trakcie gry gracze naprzemiennie strzelają ze swoich baz różnymi pociskami. Klawisze od 1 do 9 służą do wyboru między zdefiniowanymi w~pliku rozgrywki rakietami. Za pomocą klawiszy W, A, S, D można przesuwać widok planszy.
+Do ustawiania parametrów wystrzału służą strzałki. Siłę wystrzału regulują strzałka lewa oraz strzałka prawa, a~kąt - strzałka górna i~strzałka dolna. Za pomocą spacji użytkownik wystrzeliwuje pocisk.
+Celem gry jest zabicie króla przeciwnika.
 
-Nieraz specyfikacja zewnętrzna może być pominięta, np. gdy zadaniem jest optymalizacja programu, bez zmiany jego funkcjonalności, wtedy można tylko ogólnie napisać, jak się uruchamia program, jak dostarcza dane i jak odbiera wyniki.
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+W~katalogu konfiguracyjnym powinny znajdować się 3 podkatalogi: games, maps oraz forts. W~katalogu games przechowywane są pliki rozgrywki, w~katalogu maps znajdują się plansze, a~katalog forts zawiera forty wykorzystywane w~czasie gry.
+
+\subsection{Interfejs użytkownika}
+\includegraphics[width=18cm]{iface.eps}
+
+Na górnym panelu znajdują się w~narożnikach nazwy graczy wraz z~ich pozostałym życiem, a~w~środku widnieje wskaźnik wiatru. Nazwa gracza jest ujęta między czerwone nawiasy kątowe, jeśli jest aktualnie jego tura.
+Na dolnym panelu z~lewej strony znajduje się wskaźnik aktualnie ustawionej siły wystrzału, natomiast po prawej stronie jest wskaźnik broni. Pomiędzy nawiasami kwadratowymi napisany jest numer aktualnie wybranej broni, następnie jej nazwa. Po literze r znajduje się promień wybuchu, następnie po literze f: fiła rażenia i~w~końcu w~nawiasach okrągłych ilość pozostałych pocisków danej broni.
+
+\subsection{Plik rozgrywki}
+Plik rozgrywki jest oparty o~zbiór elementów typu klucz=wartość, po jednym w~każdej linii. Obowiązkowe klucze ogólnej konfiguracji to:
+\begin{itemize}
+	\item{map\_file - określa nazwę używanej mapy (plik o~takiej nazwie zostanie odczytany z~podkatalogu maps),}
+	\item{playerX\_fort\_file - określa nazwę fortu używanego przez gracza X,}
+	\item{playerX\_fort\_pos - określa pozycję fortu gracza X względem początku układu współrzędnych mapy.}
+\end{itemize}
+Nieobowiązkowe wpisy konfiguracyjne:
+\begin{itemize}
+	\item{fort\_modifier - określa modyfikator twardości fortu względem reszty mapy. Im większa wartość tym mniej zniszczalny fort,}
+	\item{max\_force - maksymalna ,,siła'' z~jaką gracz może oddać strzał określona jako prędkość początkowa w~$\frac{m}{s}$,}
+	\item{max\_wind - maksymalna ,,siła'' wiatru określona jako pozioma składowa przyspieszenia rakiet w~$\frac{m}{s^2}$,}
+	\item{playerX\_name i~playerX\_color - określają nazwę i~kolor gracza X, kolor określa się liczbą od 0 do 15 (jak w~bibliotece Crt).}
+\end{itemize}
+W~grze można zdefiniować maksymalnie 9 broni. Broń o~danym numerze (od 1 do 9) jest dostępna pod takim właśnie klawiszem. Klucze wszystkich wpisów dotyczące broni rozpoczynają się słowem weaponX\_, gdzie X oznacza numer broni. Dostępne są następujące parametry każdej broni (z~pominięciem przedrostka weaponX\_):
+\begin{itemize}
+	\item{name - nazwa dobrze opisująca typ broni i~nie za długa,}
+	\item{force - siła wybuchu broni wyrażona w~jednostkach siły wybuchu broni, ujemna wartość oznacza, że rakieta będzie pociskiem budującym,}
+	\item{radius - promień wybuchu broni wyrażony w~metrach,}
+	\item{amount - ilość rakiet danego typu, które mają być jednocześnie wystrzelone w~ramach jednego strzału,}
+	\item{limit - ilość amunicji dostępna dla pojedynczego gracza}
+	\item{drill - odległość na jaką rakieta ma się wwiercić w~teren zanim wybuchnie wyrażona w~metrach.}
+\end{itemize}
+
+\subsection{Plik planszy}
+W~pierwszej linii pliku planszy znajdują się szerokość i~wysokość planszy oddzielone pojedynczym odstępem. W~następnych liniach są kolejne poziome fragmenty planszy. Jednemu polu odpowiada jedna cyfra w~pliku. 0 oznacza pole puste, a~cyfry od 1 do 9 oznaczają różne twardości.
+
+\subsection{Plik fortu}
+Plik fortu ma podobny format do pliku planszy z~trzema różnicami: znak ,,.'' służy do zaznaczenia, że dane pole powinno być przezroczyste, gdyż 0 zamazałoby kawałek terenu pod fortem, znak ,,K'' oznacza pozycję króla, a~,,C'' - pozycję działa.
+
 \section{Specyfikacja wewnętrzna}
-Tu proszę wpisać, jak Państwo zrealizowali swoje rozwiązanie. Jest to dokumentacja techniczna dla programistów.
+Program jest dosyć dobrze udokumentowany wewnątrz kodu. Prawie przed każdą funkcją i~procedurą jest krótki opis tego co robi, więc opisywanie funkcji nie jest konieczne.
 
-Dołączanie kodu do programu powinno być rozważne. Jeżeli prowadzący nie poleci inaczej, należy cytować tylko interesujące fragmenty kodu, a nie cały kod.
-Kod powinien być podany czcionką nieproporcjonalną (np. w~środowisku {\tt verbatim}):
-\begin{verbatim}
-int main ()
-{
-   int i;   // prosze nie zapominac o komentarzach!
-   for (i = 0; i < 10; i++)
-	  cout << i << endl;   
-   return 0;
-}
-\end{verbatim}
+Ogólna zasada działania opiera się na odczytaniu plików konfiguracyjnych, odpowiednim zainicjalizowaniu zmiennych, a~następnie na sekwencyjnym wywoływaniu procedury gc\_step z~modułu GameController w~celu odświerzenia symulacji gry, oraz iface\_step z~modułu CrtInterface w~celu odświeżenia ekranu i~odebrania zdarzeń od użytkownika. Od czasu do czasu (gdy użytkownik strzela) zmieniany jest aktualny gracz procedurą iface\_change\_player.
 
-Bądź z~wykorzystaniem środowiska formatującego kod (jak {\tt listings}) 
-\begin{lstlisting}
-int main ()
-{
-	int i;		// prosze nie zapominac o komentarzach!
-	for (i = 0; i < 10; i++)
-		cout << i << endl;
-	return 0;
-}
-\end{lstlisting}
-
-Proszę pamiętać o formatowaniu kodu (wcięcia, spacje)!
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Uzyskane wyniki}
-Wyniki można przestawić w~różny sposób, np. w tabeli ({\it vide} tabela \ref{tab:1}), czy na~rysunku ({\it vide} rycina ). Albo po prostu opisać uzyskane wyniki.
-
-\begin{table*}
-\caption{Czas wykonania programu i~zajętość pamięci}
-\begin{small}
-\begin{center}
-\begin{tabular}{|c||c|c|}
-  \hline
-  liczba danych & czas wykonania [s] & zajętość pamięci [MB] \\
-  \hline
-  10  & 0,0012 & 0,43 \\
-  20  & 0,0056 & 0,98 \\
-  50  & 1,3432 & 12,4 \\
-  100 & 453,40 & 165  \\
-  200 & 7843,9 & 543  \\
-  \hline
-\end{tabular}  \label{tab:1}
-\end{center}
-\end{small}
-\end{table*}
-
+W~wyniku wykonania projektu powstała gra ASCIIBattle
 
 \section{Wnioski}
-Proszę napisać, czy zrealizowali Państwo zadanie. Jeśli nie, to dlaczego się to nie powiodło. Warto napisać, czego się Państwo nauczyli podczas tworzenia programu, czy laboratorium wniosło coś konstruktywnego..., można dodać uwagi dotyczące przedmiotu, sposobu prowadzenia, sugerowane zmiany, czego Państwo się spodziewali po ćwiczeniach, a nie zostało to spełnione. 
+Zadanie zostało zrealizowane. Program działa poprawnie.
 
 \end{document}
-% Koniec wieńczy dzieło.
