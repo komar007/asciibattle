@@ -1,12 +1,41 @@
-map_file          = field2
-fort_modifier        = 1.5
+map_file             = field2
+fort_modifier        = 3
+initial_hp           = 500
+max_force            = 30
 
 player1_name         = komar
 player1_fort_file    = f2l
 player1_fort_pos     = 0 31 
 player1_color        = 3
 
-player2_name         = kupka
+player2_name         = inny_gracz
 player2_fort_file    = f2r
 player2_fort_pos     = 155 32 
 player2_color        = 6
+
+weapon1_name         = bazooka
+weapon1_force        = 40
+weapon1_radius       = 2
+weapon1_limit        = -1
+
+weapon2_name         = driller
+weapon2_force        = 60
+weapon2_radius       = 2
+weapon2_drill        = 4
+weapon2_limit        = 5
+
+weapon3_name         = bob
+weapon3_force        = -50
+weapon3_radius       = 2.5
+weapon3_limit        = 4
+
+weapon4_name         = bomb
+weapon4_force        = 220
+weapon4_radius       = 5
+weapon4_limit        = 2
+
+weapon5_name         = multi
+weapon5_force        = 40
+weapon5_radius       = 3
+weapon5_amount       = 6
+weapon5_limit        = 3
